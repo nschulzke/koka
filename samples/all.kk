@@ -4,6 +4,7 @@
 // - `basic`:    small typical Koka programs
 // - `syntax`:   explain various specific features, like with-syntax or implicit parameters
 // - `handlers`: show effect handler programs
+//
 module all
 
 import basic/caesar

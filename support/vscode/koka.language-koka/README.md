@@ -9,8 +9,7 @@ Visit <https://koka-lang.github.io> for more information.
 ## Run and edit the standard examples
 
 Open the command panel in VSCode `(Ctrl/Cmd + Shift + P)`, and run the
-`Koka: Open samples` command (when you start typing the command will surface to the top),
-and open `basic/fibonacci.kk` for example.
+**`Koka: Open samples`** command (when you start typing the command will surface to the top).
 
 You can execute any `main`, `test..`, and `example..` functions
 directly in the debug console by clicking on the
@@ -19,7 +18,7 @@ directly in the debug console by clicking on the
 <img width="220px" style="border:1px solid grey" src="support/vscode/koka.language-koka/images/codelens.png">
 
 
-## Install the latest Koka compiler
+## (Re)Install the latest Koka compiler
 
 Open the command panel in VSCode `(Ctrl/Cmd + Shift + P)` and run the
 `Koka: Download and install the latest compiler` command.
@@ -29,24 +28,22 @@ path and specific compiler flags manually.
 
 ## Inlay hints
 
-The extension shows inlay hints for inferred types of parameters
-and local declarations. You can toggle the visibility of inlay hints
-in the editor _inlay hints_ setting (`Ctrl/Cmd + ,` and type `inlay`).
+The extension shows inlay hints for inferred types of parameters and local declarations. You can toggle the visibility of inlay hints by pressing and holding `ctrl+alt` (or `ctrl+option` on MacOS) to show these inlay hints.
 
 
 # Customization
 
 ## Supported Language Server Aspects
 
-- [x] Diagnostics (parse and type errors)
-- [x] Code completion
-- [x] Hover information
-- [x] Find definitions
-- [x] Inlay hints (shows inferred types)
-- [x] Document outline
-- [x] Code folding ranges
-- [x] Code Lenses (`run debug` and `run optimized`)
-- [ ] Jump to definition works for sources loaded in the editor
+- Diagnostics (parse and type errors)
+- Code completion
+- Hover information
+- Find definitions
+- Inlay hints (shows inferred types)
+- Document outline
+- Code folding ranges
+- Code Lenses (`run debug` and `run optimized`)
+- Jump to definition
 
 ## Syntax token classes
 

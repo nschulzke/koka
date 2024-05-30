@@ -1,10 +1,18 @@
 ~ begin news
 News:
 
-* 2024-03-14: Xavier Leroy is teaching a fantastic
-  [lecture series](https://www.college-de-france.fr/fr/agenda/cours/structures-de-controle-de-goto-aux-effets-algebriques) on
-  control structures and algebraic effects at the Coll&egrave;ge de France with many invited talks available online.\
-  March 14 at 11:15am Paris time there is a talk on the "design and compilation of efficient effect handlers in Koka" that you can [follow live on Zoom](https://zoom.us/j/97263064104?pwd=dVVTVWRBR2p2QzJKeUpGOUpLRE45dz09).
+- 2024-05-30: Koka v3.1.2 released which fixes Koka installs outside a VS Code workspace.
+
+- 2024-05-30: Read the [paper](https://www.microsoft.com/en-us/research/uploads/prodnew/2024/05/fiptree-full.pdf)
+  on "_The Functional Essence of Binary Search Trees_" by Anton Lorenzen, Daan Leijen, Sam Lindley,
+  and Wouter Swierstra to be presented at [PLDI'24](https://pldi24.sigplan.org/) on June 27.
+  
+- 2024-05-30: View the [talk](https://www.college-de-france.fr/fr/agenda/seminaire/structures-de-controle-de-goto-aux-effets-algebriques/design-and-compilation-of-efficient-effect-handlers-in-the-koka-language) 
+  on the design and compilation of efficient effect handlers in Koka as part 
+  of Xavier Leroy's beautiful
+  [lecture series](https://xavierleroy.org/CdF/2023-2024/index.html) on
+  control structures and algebraic effects at the Coll&egrave;ge de France 
+  (with many other invited talks available online).
 
 * 2024-03-04: Koka v3.1.1 released with a language server crash fix.
 

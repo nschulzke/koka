@@ -5,25 +5,34 @@
 Koka is a strongly typed functional-style language with effect types and handlers --
 generating direct C code without needing a runtime system. To learn more:
 
-* Read the [Koka book][kokabook] for a tour of the Koka language and its specification.
 * View the Koka __Samples__ in VS Code by opening the command panel (`Ctrl/Cmd+Shift+P`),
-  and running the `Koka: Open samples` command.  
+  and running the **`Koka: Open samples`** command. 
   (when you start typing the command will surface to the top).
 
-### v3.1.2
+* Read the [Koka book][kokabook] for a tour of the Koka language and its specification.
 
-- Fix VSCode installation when opening VSCode with a single file
+### v3.1.2, 2024-05-30
+
+- Interim release to fix the Koka installation from VS Code when starting outside of a workspace.
+
+- View the [talk](https://www.college-de-france.fr/fr/agenda/seminaire/structures-de-controle-de-goto-aux-effets-algebriques/design-and-compilation-of-efficient-effect-handlers-in-the-koka-language) 
+  on the design and compilation of efficient effect handlers in Koka as part 
+  of Xavier Leroy's beautiful
+  [lecture series](https://xavierleroy.org/CdF/2023-2024/index.html) on
+  control structures and algebraic effects at the Coll&egrave;ge de France 
+  (with many other invited talks available online).
+
+- Read the [paper](https://www.microsoft.com/en-us/research/uploads/prodnew/2024/05/fiptree-full.pdf)
+  on "_The Functional Essence of Binary Search Trees_" by Anton Lorenzen, Daan Leijen, Sam Lindley,
+  and Wouter Swierstra to be presented at [PLDI'24](https://pldi24.sigplan.org/) on June 27.
 
 - Various fixes and contributions from [Xia Li-yao](https://github.com/Lysxia), [Eduardo García Maleta](https://github.com/egmaleta), and [@samosica](https://github.com/samosica)
+
 
 ### v3.1.1, 2024-03-04
 
 - Fix crash in language server; fix build on older gcc versions.
 
-- Xavier Leroy is currently teaching a fantastic
-  [lecture series](https://www.college-de-france.fr/fr/agenda/cours/structures-de-controle-de-goto-aux-effets-algebriques) on
-  control structures and algebraic effects at the Coll&egrave;ge de France with many invited talks available online.
-  March 14 there will be a talk on the design and compilation of efficient effect handlers in Koka.
 
 ### v3.1.0, 2024-02-14
 
