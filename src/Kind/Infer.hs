@@ -885,7 +885,7 @@ resolveTypeDef isRec recNames (DataType newtp params constructors range vis sort
                  fromOpsName nm = if (isOperationsName nm) then [fromOperationsName nm] else []
              in if (any (occursNegativeCon (recNames ++ effNames)) (conInfos0))
               then do addError range (text "Type" <+> nameDoc <+> text "is declared as being" <-> text " (co)inductive but it occurs recursively in a negative position." <->
-                                     text " hint: declare it as a 'rec type' (or 'rec effect)' to allow negative occurrences")
+                                     text " hint: declare it as a 'rec type' (or 'rec effect') to allow negative occurrences")
               else return ()
 
        -- create datadef and conInfos with correct ValueRepr and ordered fields
