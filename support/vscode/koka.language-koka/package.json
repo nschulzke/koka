@@ -2,7 +2,7 @@
   "name": "language-koka",
   "displayName": "Koka Language",
   "description": "The official Koka programming language extension.",
-  "version": "3.1.1",
+  "version": "3.1.2",
   "compilerVersion": "3.1.1",
   "publisher": "koka",
   "engines": {
@@ -40,7 +40,8 @@
   ],
   "main": "./out/extension",
   "activationEvents": [
-    "workspaceContains:**/*.kk"
+    "workspaceContains:**/*.kk",
+    "onStartupFinished"
   ],
   "contributes": {
     "languages": [
