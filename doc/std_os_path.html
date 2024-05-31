@@ -39,7 +39,7 @@ in the base name.
 </p>
 <p class="p indent">A <code class="koka"><a class="pp" href="#type_space_path"><span class="tp">path</span><span class="pc"><span class="mo">std<span class="fslash">/</span>os<span class="fslash">/</span>path<span class="fslash last">/</span></span>path: <span class="co">V</span></span></a></code> is always normalized. For a sequence of directories, any
 empty directory or <code class="code code2">.</code> directory is ignored.
-A directory followed by <code class="code code2">..</code> is also ignored &#8211; this is the&nbsp;<a href="https://9p.io/sys/doc/lexnames.html" class="externalref">Plan 9</a>
+A directory followed by <code class="code code2">..</code> is also ignored &#8211; this is the&nbsp;<a href="https://9p.io/sys/doc/lexnames.html">Plan 9</a>
 interpretation of paths where <code class="code code2">..</code> is considered lexically.
 If parent directories should be resolved through symbolic links,
 the <code class="koka">realpath</code> function should be used (which has the <code class="koka"><a class="pp" href="https://koka-lang.github.io/koka/doc/std_core.html#type_space_io"><span class="tp">io</span><span class="pc"><span class="mo">std<span class="fslash">/</span>core<span class="fslash last">/</span></span>io: <span class="co">E</span></span></a></code> effect though).
