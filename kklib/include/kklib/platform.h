@@ -395,14 +395,9 @@ static inline size_t kk_to_size_t(kk_ssize_t sz) {
 #endif
 
 
-// `inttypes.h` is not always available; define print formatting ourselves
-#if (LONG_MAX < INT64_MAX) || (defined(__APPLE__) && defined(KK_ARCH_ARM64))
-#define KK_INT64_IS_LONG_LONG  1
-#else
-#define KK_INT64_IS_LONG       1
-#endif
-
-#if defined(KK_INT64_IS_LONG_LONG)
+// `inttypes.h` is not always available on Windows; define print formatting ourselves
+#if defined(_WIN32)
+#if (LONG_MAX < INT64_MAX)    // usually `sizeof(long)==4` on Windows!
 #define PRIdI64        "lld"
 #define PRIuI64        "llu"
 #define PRIxI64        "llx"
@@ -420,6 +415,10 @@ static inline size_t kk_to_size_t(kk_ssize_t sz) {
 #define PRIuI32        "u"
 #define PRIxI32        "x"
 #define PRIXI32        "X"
+#endif
+#else
+// use standard inttypes on other platforms.
+#include <inttypes.h>
 #endif
 
 
