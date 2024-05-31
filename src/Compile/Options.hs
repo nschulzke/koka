@@ -1153,7 +1153,7 @@ ccGcc name opt platform path
     archBits= 8 * sizePtr platform
     arch    = -- unfortunately, these flags are not as widely supported as one may hope so we only enable at -O2 or higher
               if (opt < 2) then []
-              else if (cpuArch=="x64" && archBits==64) then ["-march=x86-64-v3","-mtune=native"]    -- popcnt, lzcnt, tzcnt, pdep, pext (2013, Haswell)
+              else if (cpuArch=="x64" && archBits==64) then ["-march=haswell","-mtune=native"]    -- Haswell (2013) = x86-64-v3: popcnt, lzcnt, tzcnt, pdep, pext
               else if (cpuArch=="arm64" && archBits==64) then ["-march=armv8.1-a","-mtune=native"]  -- popcnt, simd, lse
               else []
 
