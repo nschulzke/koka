@@ -419,6 +419,14 @@ static inline size_t kk_to_size_t(kk_ssize_t sz) {
 #else
 // use standard inttypes on other platforms.
 #include <inttypes.h>
+#define PRIdI64        PRId64
+#define PRIuI64        PRIu64
+#define PRIxI64        PRIx64
+#define PRIXI64        PRIX64
+#define PRIdI32        PRId32
+#define PRIuI32        PRIu32
+#define PRIxI32        PRIx32
+#define PRIXI32        PRIX32
 #endif
 
 
