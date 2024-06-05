@@ -91,7 +91,7 @@ pub fun vector( ^n : int, default : a) : vector<a>
 
 // Create a new vector of length `n`  with initial elements given by _total_ function `f`.
 // (can be more efficient than `vector-init`)
-pub fun vector-init-total( ^n : int, f : int -> a ) : e vector<a>
+pub fun vector-init-total( ^n : int, f : int -> a ) : vector<a>
   vector-alloc-total( n.ssize_t, fn(i) f(i.int) )
 
 // Create a new vector of length `n`  with initial elements given by function `f` which can have a control effect.
@@ -120,7 +120,7 @@ pub fun foreach-while( v : vector<a>, f : a -> e maybe<b> ) : e maybe<b>
   for-whilez( v.lengthz ) fn(i)
     f(v.unsafe-idx(i))
 
-// Apply a total function `f` to each element in a vector `v`
+// Apply a function `f` to each element in a vector `v`
 pub fun map( v : vector<a>, f : a -> e b ) : e vector<b>
   val w = unsafe-vector(v.length.ssize_t)
   v.foreach-indexedz fn(i,x)
