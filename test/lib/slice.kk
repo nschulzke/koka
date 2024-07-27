@@ -62,6 +62,9 @@ fun test-take()
   println("Hello".slice.take(3).string == "Hel")
   println("Hello".slice.take(-3).string == "Hello")
   println("Hello ☺ World".slice.take(7).string == "Hello ☺")
+  println("Hello @ World".slice.take(0).string == "")
+  println("".slice().extend(5).string == "")
+  println("".slice().extend(-5).string == "")
 
 fun test-equality()
   val v1 = "Hello".slice
