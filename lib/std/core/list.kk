@@ -20,25 +20,25 @@ import std/core/vector
 
 
 // Return the head of list if the list is not empty.
-pub fun head( xs : list<a> ) : maybe<a>
+pub fbip fun head( xs : list<a> ) : maybe<a>
   match xs
     Cons(x) -> Just(x)
     _       -> Nothing
 
 // Return the head of list with a default value in case the list is empty.
-pub fun default/head( xs : list<a>, default : a ) : a
+pub fbip fun default/head( xs : list<a>, default : a ) : a
   match xs
     Cons(x) -> x
     _       -> default
 
 // Return the tail of list. Returns the empty list if `xs` is empty.
-pub fun tail( xs : list<a> ) : list<a>
+pub fbip fun tail( xs : list<a> ) : list<a>
   match xs
     Cons(_,xx) -> xx
     _          -> []
 
 // Is the list empty?
-pub fun is-empty( xs : list<a> ) : bool
+pub fip fun is-empty( ^xs : list<a> ) : bool
   match xs
     Nil -> True
     _   -> False
@@ -49,7 +49,7 @@ pub fun is-empty( xs : list<a> ) : bool
 // ----------------------------------------------------------------------------
 
 // Returns a singleton list.
-pub fun single(x)
+pub fip(1) fun single(x)
   [x]
 
 // Returns the length of a list.
@@ -130,7 +130,7 @@ pub fun show-list( xs : list<a>, show-elem : (a) -> e string ) : e string
 
 // Zip two lists together by pairing the corresponding elements.
 // The returned list is only as long as the smallest input list.
-pub fun zip( xs : list<a>, ys : list<b> ) : list<(a,b)>
+pub fbip fun zip( xs : list<a>, ys : list<b> ) : list<(a,b)>
   match xs
     Cons(x,xx) -> match ys
       Cons(y,yy) -> Cons((x,y),zip(xx,yy))
@@ -139,7 +139,7 @@ pub fun zip( xs : list<a>, ys : list<b> ) : list<(a,b)>
 
 // Zip two lists together by apply a function `f` to all corresponding elements.
 // The returned list is only as long as the smallest input list.
-pub fun zipwith( xs : list<a>, ys :list<b>, f : (a,b) -> e c ) : e list<c>
+pub fbip fun zipwith( xs : list<a>, ys :list<b>, ^f : (a,b) -> e c ) : e list<c>
   match xs
     Cons(x,xx) -> match ys
       Cons(y,yy) -> Cons(f(x,y),zipwith(xx,yy,f))
@@ -160,7 +160,6 @@ pub fun zipwith-indexed( xs0 : list<a>, ys0 :list<b>, f : (int,a,b) -> e c ) : e
 
 // Unzip a list of pairs into two lists
 pub fun unzip( xs : list<(a,b)> ) : (list<a>,list<b>)
-  // todo: implement TRMC for multiple results
   fun iter( ys, acc1, acc2 )
     match ys
       Cons((x,y),xx) -> iter(xx,acc1 ++ ctx Cons(x,_),acc2 ++ ctx Cons(y,_))
@@ -169,7 +168,6 @@ pub fun unzip( xs : list<(a,b)> ) : (list<a>,list<b>)
 
 // Unzip a list of triples into three lists
 pub fun unzip3( xs : list<(a,b,c)>) : (list<a>,list<b>,list<c>)
-  // todo: implement TRMC for multiple results
   fun iter( ys, acc1, acc2, acc3 )
     match ys
       Cons((x,y,z),xx) -> iter(xx,acc1 ++ ctx Cons(x,_),acc2 ++ ctx Cons(y,_),acc3 ++ ctx Cons(z,_))
@@ -178,7 +176,6 @@ pub fun unzip3( xs : list<(a,b,c)>) : (list<a>,list<b>,list<c>)
 
 // Unzip a list of quadruples into four lists
 pub fun unzip4( xs : list<(a,b,c,d)>) : (list<a>,list<b>,list<c>,list<d>)
-  // todo: implement TRMC for multiple results
   fun iter( ys, acc1, acc2, acc3, acc4 )
     match ys
       Cons((x,y,z,w),xx) -> iter(xx,acc1 ++ ctx Cons(x,_),acc2 ++ ctx Cons(y,_),acc3 ++ ctx Cons(z,_),acc4 ++ ctx Cons(w,_))
@@ -198,7 +195,7 @@ pub fun drop( xs : list<a>, n : int ) : list<a>
     _ -> xs
 
 // Apply a function `f` to each element of the input list in sequence.
-pub fun map(xs : list<a>, f : a -> e b) : e list<b>
+pub fip fun map(xs : list<a>, ^f : a -> e b) : e list<b>
   match xs
     Cons(x,xx) -> Cons(f(x), xx.map(f))
     Nil -> Nil
@@ -231,24 +228,25 @@ pub fun map-indexed-peek(xs : list<a>, f : (idx : int, value : a, rest : list<a>
   mapidx(xs,0)
 
 // Reverse a list.
-pub fun reverse(xs : list<a>) : list<a>
+pub fip fun reverse(xs : list<a>) : list<a>
   reverse-append( xs, Nil )
 
 // Efficiently reverse a list `xs` and append it to `tl`:
 // `reverse-append(xs,tl) == reserve(xs) ++ tl
-pub fun reverse-append( xs : list<a>, tl : list<a> ) : list<a>
-  fun reverse-acc(acc : list<a>, ys : list<a> ) : list<a>
-    match ys
-      Cons(x,xx) -> reverse-acc(Cons(x,acc),xx)
-      _          -> acc
+pub fip fun reverse-append( xs : list<a>, tl : list<a> ) : list<a>
   reverse-acc(tl,xs)
 
+fip fun reverse-acc(acc : list<a>, ys : list<a> ) : list<a>
+  match ys
+    Cons(x,xx) -> reverse-acc(Cons(x,acc),xx)
+    _          -> acc
+
 // Append two lists.
-pub fun (++)(xs : list<a>, ys : list<a> ) : list<a>
+pub fip fun (++)(xs : list<a>, ys : list<a> ) : list<a>
   append(xs,ys)
 
 // Append two lists.
-pub fun append(xs : list<a>, ys : list<a> ) : list<a>
+pub fip fun append(xs : list<a>, ys : list<a> ) : list<a>
   match xs
     Cons(x,xx) -> Cons(x,append(xx,ys))
     Nil -> ys

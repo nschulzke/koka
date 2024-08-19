@@ -160,6 +160,17 @@ static inline kk_box_t kk_uintf_box(kk_uintf_t u) {
   return kk_intf_box(i);
 }
 
+static inline kk_unit_t kk_setunique(kk_box_t b, kk_context_t* ctx) {
+  return kk_block_setunique(kk_ptr_unbox(b, ctx), ctx);
+}
+
+static inline kk_unit_t kk_blackhole(kk_box_t b, kk_context_t* ctx) {
+  return kk_block_blackhole(kk_ptr_unbox(b, ctx));
+}
+
+static inline kk_unit_t kk_whitehole(kk_box_t b, kk_context_t* ctx) {
+  return kk_block_whitehole(kk_ptr_unbox(b, ctx));
+}
 
 static inline kk_box_t kk_box_dup(kk_box_t b, kk_context_t* ctx) {
   if (kk_box_is_ptr(b)) { kk_block_dup(kk_ptr_unbox(b, ctx)); }

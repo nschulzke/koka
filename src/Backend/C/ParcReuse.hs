@@ -38,6 +38,8 @@ import Common.Syntax
 import Core.Core
 import Core.Pretty
 
+import Backend.C.ParcReuseSpec (Match(..), tryMatch, genConTagFieldsAssign, genConFieldsAssign)
+
 --------------------------------------------------------------------------
 -- Reference count transformation
 --------------------------------------------------------------------------
@@ -72,9 +74,91 @@ ruTopLevelDef def
 -- Main PARC algorithm
 --------------------------------------------------------------------------
 
+getConInfo :: Type -> Name -> Reuse (Maybe ConInfo)
+getConInfo dataType conName
+  = do newtypes <- getNewtypes
+       let mdataName = extractDataName dataType
+       let mdataInfo = (`newtypesLookupAny` newtypes) =<< mdataName
+       case filter (\ci -> conInfoName ci == conName) . dataInfoConstrs <$> mdataInfo of
+         Just (ci:_) -> pure $ Just ci
+         _ -> pure Nothing
+
+extractDataName :: Type -> Maybe Name
+extractDataName tp
+  = case expandSyn tp of
+      TForall _ _ t -> extractDataName t
+      TFun _ _ t -> extractDataName t
+      TCon tc    -> Just (typeConName tc)
+      TApp t _   -> extractDataName t
+      _          -> Nothing
+
+ruToAssign :: Match -> Reuse ([DefGroup],(Expr,Bool {-is match?-}))
+ruToAssign (Match pres arg)  = return ([DefNonRec (makeDef nameNil pre) | pre <- pres],(arg,True))
+ruToAssign (NoMatch expr)
+  = if isTotal expr
+     then return ([],(expr,False))
+     else do name <- uniqueName "ru"
+             let def = DefNonRec (makeDef name expr)
+             let var = Var (TName name (typeOf expr)) InfoNone
+             return ([def],(var,False))
+
+extractCon :: Expr -> Maybe (TName, ConRepr)
+extractCon (Con cname repr) = Just (cname, repr)
+extractCon (TypeApp (Con cname repr) _) = Just (cname, repr)
+extractCon _ = Nothing
+
+ruSpecCon' :: TName -> TName -> ConRepr -> ConInfo -> Bool -> Int -> Type -> [Match] -> Reuse Expr
+ruSpecCon' reuseName conName conRepr conInfo needsTag tag resultType matches
+  = do (defss, assigns) <- unzip <$> mapM ruToAssign matches
+       let fields = map fst (conInfoParams conInfo)
+           nonMatching = [(name,expr) | (name,(expr,isMatch)) <- zip fields assigns, not isMatch]
+           reuseExpr = if needsTag then genConTagFieldsAssign resultType conName conRepr reuseName tag nonMatching
+                                   else genConFieldsAssign resultType conName conRepr reuseName nonMatching
+           rWhite = genWhitehole reuseName
+       res <- uniqueName "ru"
+       return (makeLet (concat defss) $ makeLet [DefNonRec (makeDef res reuseExpr)] (makeStats [rWhite, Var (TName res (typeOf reuseExpr)) InfoNone]))
+
+stripLets :: Expr -> ([DefGroup], Expr)
+stripLets expr
+  = case expr of
+      Let [] body
+        -> stripLets body
+      Let (DefNonRec def:dgs) body
+        -> let (dgs', body') = stripLets body
+            in (DefNonRec def:dgs' ++ dgs, body')
+      _ -> ([], expr)
+
+makeLets :: [DefGroup] -> Expr -> Expr
+makeLets [] expr = expr
+makeLets dgs expr = makeLet dgs expr
+
 ruExpr :: Expr -> Reuse Expr
 ruExpr expr
   = case expr of
+      App (Var name _) [Var tname _] | nameStem (getName name) == "unsafe-lazycon"
+        -> do registerLazyCon tname
+              return (Lit (LitInt 0)) -- expr
+      App (Var name _) [Var tname _, conApp] | nameStem (getName name) == "unsafe-overwrite"
+        -> do ds <- getDeconstructed
+              (_, reuseName) <- getDeconstructedLazyCon
+              markReused reuseName
+              case NameMap.lookup (getName tname) ds of
+                Just (pat, size, scan)
+                  -> let info = maybe InfoNone InfoReuse pat
+                         (boxDefs, conApp') = stripLets conApp
+                     in case (conApp',info) of
+                       (App (Con cname repr) args, InfoReuse (PatCon{patConName, patConPatterns}))
+                         -> do args <- mapM ruExpr args
+                               let matches = zipWith tryMatch args patConPatterns
+                                   needsTag = patConName /= cname
+                               mci <- getConInfo (typeOf cname) (getName cname)                                     
+                               case mci of
+                                 Just ci
+                                   -> makeLets boxDefs <$> ruSpecCon' reuseName cname repr ci needsTag (conTag repr) (typeOf conApp') matches
+                                 Nothing -> error $ "lazy con error: no con info for " ++ show cname
+                       (_, _) -> error $ "lazy con error: not a con app: " ++ show conApp
+                Nothing -> error $ "lazy con error: no deconstructed info for " ++ show tname
+
       App con@(Con cname repr) args
         -> do args' <- mapM ruExpr args
               ruTryReuseCon cname repr (App con args')
@@ -163,21 +247,39 @@ ruLet' def
           -- We assume that makeDropSpecial always occurs in a definition.
           App (Var name _) [Var y _, xUnique, rShared, xDecRef] | getName name == nameDropSpecial
             -> do fUnique <- ruLetExpr xUnique
-                  ru <- ruMakeAvailable y
-                  return (\reused ->
-                    let (rusUnique, rUnique') = fUnique reused
-                        rUnique = rUnique' exprUnit
-                    in case ru of
-                      Just ru | ru `S.member` reused
-                        -> let rReuse = genReuseAssignWith ru (genReuseAddress y)
-                           in (ru:rusUnique, makeDefsLet [makeDef nameNil
-                                ( makeIfExpr (genIsUnique y)
-                                  (makeStats [rUnique, rReuse])
-                                  (makeStats [rShared, xDecRef]))])
-                      _ -> do (rusUnique, makeDefsLet [makeDef nameNil
-                                ( makeIfExpr (genIsUnique y)
-                                  (makeStats [rUnique, genFree y])
-                                  (makeStats [rShared, xDecRef]))]))
+                  regLazyCon <- getRegisteredLazyCon
+                  case regLazyCon of
+                    Just regLazyCon | y == regLazyCon -> do
+                      ru <- uniqueTName typeReuse
+                      deconstructLazyCon ru
+                      return (\reused ->
+                        let (rusUnique, rUnique') = fUnique reused
+                            rUnique = rUnique' exprUnit
+                            rWhite = genConsWhitehole y
+                        in if ru `S.member` reused
+                          then let rReuse = genReuseAssignWith ru (genReuseAddress y)
+                               in (ru:rusUnique, makeDefsLet [makeDef nameNil
+                                    (makeStats [rUnique, rReuse])])
+                          else do (rusUnique, makeDefsLet [makeDef nameNil
+                                    ( makeIfExpr (genIsUnique y)
+                                      (makeStats [rUnique, genFree y])
+                                      (makeStats [rWhite, rShared, xDecRef]))]))
+                    _ -> do
+                      ru <- ruMakeAvailable y
+                      return (\reused ->
+                        let (rusUnique, rUnique') = fUnique reused
+                            rUnique = rUnique' exprUnit
+                        in case ru of
+                          Just ru | ru `S.member` reused
+                            -> let rReuse = genReuseAssignWith ru (genReuseAddress y)
+                               in (ru:rusUnique, makeDefsLet [makeDef nameNil
+                                    ( makeIfExpr (genIsUnique y)
+                                      (makeStats [rUnique, rReuse])
+                                      (makeStats [rShared, xDecRef]))])
+                          _ -> do (rusUnique, makeDefsLet [makeDef nameNil
+                                    ( makeIfExpr (genIsUnique y)
+                                      (makeStats [rUnique, genFree y])
+                                      (makeStats [rShared, xDecRef]))]))
           _ -> do de <- ruExpr (defExpr def)
                   return (\_ -> ([], makeDefsLet [(def{defExpr=de})]))
 
@@ -315,6 +417,20 @@ genIsUnique tname
         [Var tname InfoNone]
   where funTp = TFun [(nameNil, typeOf tname)] typeTotal typeBool
 
+-- Generate a whitehole
+genWhitehole :: TName -> Expr
+genWhitehole tname
+  = App (Var (TName nameWhitehole funTp) (InfoExternal [(C CDefault, "kk_block_whitehole(#1)")]))
+        [Var tname InfoNone]
+  where funTp = TFun [(nameNil, typeOf tname)] typeTotal typeUnit
+
+-- Generate a constructor whitehole
+genConsWhitehole :: TName -> Expr
+genConsWhitehole tname
+  = App (Var (TName nameWhitehole funTp) (InfoExternal [(C CDefault, "kk_datatype_ptr_whitehole(#1,kk_context())")]))
+        [Var tname InfoNone]
+  where funTp = TFun [(nameNil, typeOf tname)] typeTotal typeUnit
+
 -- Generate a free of a constructor
 genFree :: TName -> Expr
 genFree tname
@@ -376,6 +492,8 @@ maybeStats xs expr
 type Available = M.IntMap [ReuseInfo]
 type Deconstructed = NameMap.NameMap (Maybe Pattern, Int {-byte size-}, Int {-scan fields-})
 type Reused = S.Set TName
+type ReuseNames = NameMap.NameMap TName
+data LazyCon = NoLazyCon | KnownLazyCon TName | DeconstructedLazyCon TName TName
 
 data ReuseInfo = ReuseInfo{ reuseName :: TName, pattern :: Maybe Pattern }
 
@@ -389,7 +507,8 @@ data Env = Env { currentDef :: [Def],
 data ReuseState = ReuseState { uniq :: Int,
                                available :: Available,
                                deconstructed :: Deconstructed,
-                               reused :: Reused }
+                               reused :: Reused,
+                               lazyCon :: LazyCon }
 
 type ReuseM a = ReaderT Env (State ReuseState) a
 
@@ -416,7 +535,7 @@ runReuse :: Pretty.Env -> Bool -> Platform -> Newtypes -> Reuse a -> Unique a
 runReuse penv enableReuse platform newtypes (Reuse action)
   = withUnique $ \u ->
       let env = Env [] enableReuse penv platform newtypes
-          st = ReuseState u M.empty NameMap.empty S.empty
+          st = ReuseState u M.empty NameMap.empty S.empty NoLazyCon
           (val, st') = runState (runReaderT action env) st
        in (val, uniq st')
 
@@ -516,6 +635,31 @@ reusedUnion = S.unions
 
 getEnableReuse :: Reuse Bool
 getEnableReuse = asks enableReuse
+
+registerLazyCon :: TName -> Reuse ()
+registerLazyCon tname = updateSt (\s -> s { lazyCon = KnownLazyCon tname })
+
+getRegisteredLazyCon :: Reuse (Maybe TName)
+getRegisteredLazyCon = do
+  s <- lazyCon <$> getSt
+  return $ case s of
+    KnownLazyCon tname -> Just tname
+    DeconstructedLazyCon tname _ -> Just tname
+    _ -> Nothing
+
+deconstructLazyCon :: TName -> Reuse ()
+deconstructLazyCon rname = updateSt (\s -> case lazyCon s of
+  KnownLazyCon tname -> s { lazyCon = DeconstructedLazyCon tname rname }
+  DeconstructedLazyCon tname _ -> s { lazyCon = DeconstructedLazyCon tname rname }
+  _ -> error $ "destructLazyCon: not a known lazy con")
+
+getDeconstructedLazyCon :: Reuse (TName, TName)
+getDeconstructedLazyCon = do
+  s <- lazyCon <$> getSt
+  case s of
+    DeconstructedLazyCon tname rname -> return (tname, rname)
+    KnownLazyCon tname -> error $ "getDeconstructedLazyCon: " ++ show tname ++ " was not deconstructed"
+    NoLazyCon -> error $ "getDeconstructedLazyCon: no known lazy con"
 
 --
 

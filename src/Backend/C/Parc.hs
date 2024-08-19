@@ -102,6 +102,14 @@ parcTopLevelExpr _ expr = parcExpr expr
 parcExpr :: Expr -> Parc Expr
 parcExpr expr
   = case expr of
+      App (Var name _) _ | nameStem (getName name) == "unsafe-lazycon"
+                        || nameStem (getName name) == "whitehole"
+                        || nameStem (getName name) == "blackhole"
+        -> do return expr
+      App (Var name varInfo) [var, conApp] | nameStem (getName name) == "unsafe-overwrite"
+        -> do conApp' <- parcExpr conApp
+              return $ App (Var name varInfo) [var, conApp']
+
       TypeLam tpars body
         -> TypeLam tpars <$> parcExpr body
       TypeApp body targs
@@ -379,7 +387,7 @@ specializeDrop mchildrenOf conNameOf dups v    -- dups are descendents of v
             -- don't specialize certain primitives
             then do -- parcTrace $ "no specialize: " ++ show v
                     noSpecialize v
-            else do -- parcTrace $ "specialize: " ++ show y
+            else do -- parcTrace $ "specialize: " ++ show v
                     xDecRef <- genDecRef v
                     let maybeStatsUnit :: [Maybe Expr] -> Expr
                         maybeStatsUnit xs

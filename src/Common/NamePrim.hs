@@ -71,6 +71,7 @@ module Common.NamePrim
 
           , nameTpBox, nameUnbox, nameBox, nameBoxCon
 
+          , nameWhitehole
           , nameDup, nameDrop, nameIsUnique, nameFree, nameDecRef
           , nameKeepMatch, nameDropMatch, nameReuseMatch
           , nameTpReuse, nameDropReuse, nameFreeReuse
@@ -461,6 +462,8 @@ nameConFieldsAssign = coreTypesName "@con-fields-assign"
 nameConTagFieldsAssign = coreTypesName "@con-tag-fields-assign"
 nameSetTag      = coreTypesName "@set-tag"
 nameKeep        = coreTypesName "keep"
+
+nameWhitehole        = coreTypesName "@whitehole"
 
 nameDup         = coreTypesName "@dup"
 nameDrop        = coreTypesName "@drop"

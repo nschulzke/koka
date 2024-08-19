@@ -11,7 +11,7 @@
 -- constructor reuse analysis
 -----------------------------------------------------------------------------
 
-module Backend.C.ParcReuseSpec( parcReuseSpecialize ) where
+module Backend.C.ParcReuseSpec where
 
 import Lib.Trace (trace)
 import Control.Monad

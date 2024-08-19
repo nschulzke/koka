@@ -123,7 +123,7 @@ typedef int kk_cpath_t;
 // If the scan_fsize == 0xFF, the full scan count is in the first field as a boxed int (which includes the scan field itself).
 typedef struct kk_header_s {
   uint8_t   scan_fsize;  // number of fields that should be scanned when releasing (`scan_fsize <= 0xFF`, if 0xFF, the full scan size is the first field)
-  uint8_t   _field_idx;  // private: used for context paths and during stack-less freeing  (see `refcount.c`)
+  _Atomic(uint8_t)   _field_idx;  // private: used for context paths, blackholing lazy constructors and during stack-less freeing  (see `refcount.c`)
   uint16_t  tag;         // constructor tag
   _Atomic(kk_refcount_t) refcount; // reference count  (last to reduce code size constants in kk_header_init)
 } kk_header_t;
@@ -848,6 +848,7 @@ kk_decl_export void        kk_box_mark_shared_recx(kk_box_t b, kk_context_t* ctx
 #define kk_base_type_is_unique(v)               (kk_block_is_unique(&((v)->_block)))
 #define kk_base_type_as(tp,v)                   (kk_block_as(tp,&((v)->_block)))
 #define kk_base_type_free(v,ctx)                (kk_block_free(&((v)->_block),ctx))
+#define kk_base_type_whitehole(v)               (kk_block_whitehole(&((v)->_block)))
 #define kk_base_type_decref(v,ctx)              (kk_block_decref(&((v)->_block),ctx))
 #define kk_base_type_dup_as(tp,v)               ((tp)kk_block_dup(&((v)->_block)))
 #define kk_base_type_drop(v,ctx)                (kk_block_dropi(&((v)->_block),ctx))
@@ -866,6 +867,7 @@ kk_decl_export void        kk_box_mark_shared_recx(kk_box_t b, kk_context_t* ctx
 
 #define kk_constructor_is_unique(v)             (kk_base_type_is_unique(&((v)->_base)))
 #define kk_constructor_free(v,ctx)              (kk_base_type_free(&((v)->_base),ctx))
+#define kk_constructor_whitehole(v)             (kk_base_type_whitehole(&((v)->_base)))
 #define kk_constructor_dup_as(tp,v)             (kk_base_type_dup_as(tp, &((v)->_base)))
 #define kk_constructor_drop(v,ctx)              (kk_base_type_drop(&((v)->_base),ctx))
 #define kk_constructor_dropn_reuse(v,n,ctx)     (kk_base_type_dropn_reuse(&((v)->_base),n,ctx))
@@ -1356,6 +1358,57 @@ static inline kk_datatype_t kk_cctx_setcp(kk_datatype_t d, size_t field_offset, 
 
 typedef kk_box_t kk_field_addr_t;
 
+/*--------------------------------------------------------------------------------------
+  Lazy Constructors
+--------------------------------------------------------------------------------------*/
+
+#define BLACKHOLE 0xFF
+
+static inline kk_unit_t kk_setunique(kk_box_t b, kk_context_t* ctx);
+static inline kk_unit_t kk_blackhole(kk_box_t b, kk_context_t* ctx);
+static inline kk_unit_t kk_whitehole(kk_box_t b, kk_context_t* ctx);
+
+static kk_unit_t kk_block_setunique(kk_block_t* b, kk_context_t* ctx) {
+  kk_assert_internal(kk_block_is_valid(b));
+  kk_block_refcount_set(b, 0);
+  return kk_Unit;
+}
+
+static kk_unit_t kk_block_blackhole(kk_block_t* b) {
+  kk_assert_internal(kk_block_is_valid(b));
+  if kk_likely(!kk_block_is_thread_shared(b) && kk_block_field_idx(b) != BLACKHOLE) { // fast path
+    kk_block_field_idx_set(b, BLACKHOLE);
+  }
+  else {
+    if kk_likely(kk_block_is_thread_shared(b)) { // thread-shared or sticky (overflowed) ?
+      uint8_t idx;
+      do { // Write BLACKHOLE if not currently set
+        do { // Wait for other threads to finish evaluation
+          idx = kk_block_field_idx(b);
+        } while (idx == BLACKHOLE);
+      } while (kk_atomic_cas_weak_relaxed(&(b->header._field_idx), &idx, BLACKHOLE));
+    } else {  // our current thread is evaluating this thunk, no recovery possible
+      printf("<loop>\n"); 
+      exit(1);
+    }
+  }
+  return kk_Unit;
+}
+
+static kk_unit_t kk_block_whitehole(kk_block_t* b) {
+  kk_assert_internal(kk_block_is_valid(b));
+  if kk_likely(!kk_block_is_thread_shared(b)) { // fast path
+    kk_block_field_idx_set(b, 0);
+  }
+  else {  // thread-shared or sticky (overflowed) ?
+    kk_atomic_store_relaxed(&(b->header._field_idx), 0);
+  }
+  return kk_Unit;
+}
+
+static inline void kk_datatype_ptr_whitehole(kk_datatype_t d, kk_context_t* ctx) {
+  kk_block_whitehole(kk_datatype_as_ptr(d,ctx));
+}
 
 /*----------------------------------------------------------------------
   Further primitive datatypes and api's

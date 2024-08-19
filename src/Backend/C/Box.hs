@@ -76,6 +76,13 @@ boxExpr expectTp expr
       TypeLam tvs e        -> boxExpr expectTp e
       TypeApp e tps        -> boxExpr expectTp e
 
+      -- Lazy constructor primitives
+      App (TypeApp (Var name info) _) args | nameStem (getName name) == "unsafe-lazycon"
+        -> return $ App (Var name info) args
+      App (TypeApp (Var name info) _) [var, arg] | nameStem (getName name) == "unsafe-overwrite"
+        -> do arg' <- boxExpr expectTp arg
+              return $ App (Var name info) [var, arg']
+
       -- Regular
       App e args           -> do let argTps = map boxTypeOf args
                                      eTp    = TFun [(nameNil,tp) | tp <- argTps] typeTotal expectTp
