@@ -150,7 +150,8 @@ chkBranches :: [Expr] -> [Branch] -> Chk ()
 chkBranches scrutinees branches
   = do whichBorrowed <- mapM isBorrowedScrutinee scrutinees
        let branches' = filter (not . isPatternMatchError) branches
-       outs <- mapM (extractOutput . chkBranch whichBorrowed) branches'
+       let stypes = map typeOf scrutinees
+       outs <- mapM (extractOutput . chkBranch whichBorrowed stypes) branches'
        gamma2 <- joinContexts (map branchPatterns branches') outs
        writeOutput gamma2
        withBorrowed (S.map getName $ M.keysSet $ gammaNm gamma2) $
@@ -167,10 +168,10 @@ chkScrutinee :: (ParamInfo, Expr) -> Chk ()
 chkScrutinee (Borrow, Var tname info) = pure ()
 chkScrutinee (_, expr) = chkExpr expr
 
-chkBranch :: [ParamInfo] -> Branch -> Chk ()
-chkBranch whichBorrowed (Branch pats guards)
-  = do let (borPats, ownPats) = partition ((==Borrow) .fst) $ zip whichBorrowed pats
-       outs <- withBorrowed (S.map getName $ bv $ map snd borPats) $
+chkBranch :: [ParamInfo] -> [Type] -> Branch -> Chk ()
+chkBranch whichBorrowed stypes (Branch pats guards)
+  = do let (borPats, ownPats) = partition ((==Borrow) .fst) $ zip whichBorrowed $ zip pats stypes
+       outs <- withBorrowed (S.map getName $ bv $ map (fst . snd) borPats) $
                 mapM (extractOutput . chkGuard) guards
        out <- joinContexts (repeat pats) outs
        writeOutput =<< foldM (flip bindPattern) out (map snd ownPats)
@@ -184,26 +185,29 @@ chkGuard (Guard test expr)
 
 -- | We ignore default branches that create a pattern match error
 isPatternMatchError :: Branch -> Bool
-isPatternMatchError (Branch pats [Guard (Con gname _) (App (TypeApp (Var (TName fnname _) _) _) _)])
+isPatternMatchError (Branch pats [Guard (Con gname _) (App (App _ [TypeApp (Var (TName fnname _) _) _]) _)])
   | all isPatWild pats && getName gname == nameTrue && fnname == namePatternMatchError = True
   where isPatWild PatWild = True; isPatWild _ = False
-isPatternMatchError _ = False
+isPatternMatchError b = False
 
-bindPattern :: Pattern -> Output -> Chk Output
-bindPattern (PatCon cname pats crepr _ _ _ _ _) out
+bindPattern :: (Pattern, Type) -> Output -> Chk Output
+bindPattern (PatCon cname pats crepr types _ _ _ _, tp) out
   = do size <- getConstructorAllocSize crepr
-       provideToken cname size =<< foldM (flip bindPattern) out pats
-bindPattern (PatVar tname (PatCon cname pats crepr _ _ _ _ _)) out
+       provideToken cname size =<< foldM (flip bindPattern) out (zip pats types)
+bindPattern (PatVar tname (PatCon cname pats crepr types _ _ _ _), tp) out
   = do size <- getConstructorAllocSize crepr
-       bindName tname (Just size) =<< foldM (flip bindPattern) out pats
-bindPattern (PatVar tname PatWild) out
+       bindName tname (Just size) out
+bindPattern (PatVar tname PatWild, _) out
   = bindName tname Nothing out
-bindPattern (PatVar tname pat) out -- Else, don't bind the name.
-  = bindPattern pat out            -- The end of the analysis fails if the name is actually used.
-bindPattern (PatLit _) out = pure out
-bindPattern PatWild out = pure out
-
-
+bindPattern (PatVar tname pat, tp) out   -- Else, don't bind the name.
+  = bindPattern (pat, tp) out            -- The end of the analysis fails if the name is actually used.
+bindPattern (PatLit _, _) out = pure out
+bindPattern (PatWild, tp) out
+  = do ndd <- needsDupDropTp tp
+       when ndd $
+         requireCapability mayDealloc $ \ppenv -> Just $
+           vcat [text "binding a wildcard pattern of type" <+> pretty tp <+> text "causes deallocation"]
+       pure out
 
 chkApp :: Expr -> [Expr] -> Chk ()
 chkApp (TypeLam _ fn) args = chkApp fn args -- ignore type machinery
