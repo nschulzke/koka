@@ -37,7 +37,7 @@ pub fip fun (<)( x : order, y : order ) : bool
   x.int < y.int
 
 // Convert an `:order2` to an `:int` (`-1`, `0`, or `1`)
-pub fip fun order2/int( x : order2<a> ) : int
+pub fip fun order2/int( ^x : order2<a> ) : int
   match x
     Lt2 -> -1
     Eq2 -> 0
