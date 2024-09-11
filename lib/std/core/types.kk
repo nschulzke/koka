@@ -243,6 +243,11 @@ pub value type box<a>
   con Box( unbox : a )
 
 
+// A padding type `pad`.
+// This is sometimes used for fbip programming to match up the size of constructors for reuse.
+pub reference type pad
+  Pad
+
 /*
 // Explicitly heap allocate using the `Hbox` constructor.
 pub reference type hbox<a>
