@@ -125,7 +125,7 @@ import Syntax.Syntax(Expr(..),ValueBinder(..))
 import qualified Debug.Trace as DT
 
 trace s x =
-  DT.trace (" " ++ s)
+  -- DT.trace (" " ++ s)
    x
 
 {--------------------------------------------------------------------------

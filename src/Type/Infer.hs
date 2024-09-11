@@ -1080,7 +1080,7 @@ inferHandler propagated expect handlerSort handlerScoped allowMask
        resumeArgs <- mapM (\_ -> Op.freshTVar kindStar Meta) branches  -- TODO: get operation result types to improve inference
 
        -- construct the handler
-       -- traceDoc $ \penv -> text "infer handler: heff:" <+> ppType penv heff <+> text ", propagated:" <+> (case propagated of { Nothing  -> text "none"; Just (tp,_)  -> ppType penv tp })
+       traceDoc $ \penv -> text "infer handler: heff:" <+> ppType penv heff <+> text ", propagated:" <+> (case propagated of { Nothing  -> text "none"; Just (tp,_)  -> ppType penv tp })
        let -- create expressions for each clause
            opName b1 b2 = compare (show (unqualify (hbranchName b1))) (show (unqualify (hbranchName b2)))
            clause (HandlerBranch opName pars body opSort nameRng patRng, resumeArg)
@@ -1106,9 +1106,10 @@ inferHandler propagated expect handlerSort handlerScoped allowMask
                                                      "raw ctl")
                           OpControlErr -> failure "Type.Infer.inferHandler: using a bare operation is deprecated.\n  hint: start with 'val', 'fun', 'brk', or 'ctl' instead."
                           -- _            -> failure $ "Type.Infer.inferHandler: unexpected resume kind: " ++ show rkind
-                 -- traceDoc $ \penv -> text "resolving:" <+> text (showPlain opName) <+> text ", under effect:" <+> text (showPlain effectName)
-                 (_,gtp,_) <- resolveFunName (if isQualified opName then opName else qualify (qualifier effectName) opName)
-                                               (CtxFunArgs False (length pars + (if isInstance then 1 else 0)) [] Nothing) patRng nameRng -- todo: resolve more specific with known types?
+
+                 let qopname = if isQualified opName then opName else qualify (qualifier effectName) opName
+                 -- traceDoc $ \penv -> text "resolving:" <+> text (showPlain opName) <.> text ", qualified as:" <+> text (showPlain qopname) <+> text ", under effect:" <+> text (showPlain effectName)
+                 (_,gtp,_) <- resolveFunName qopname (CtxFunArgs False (length pars + (if isInstance then 1 else 0)) [] Nothing) patRng nameRng -- todo: resolve more specific with known types?
                  (tp,_,_)  <- instantiateEx nameRng gtp
                  let parTps = case splitFunType tp of
                                 Just (tpars,_,_) -> (if (isInstance) then tail else id) $ -- drop the first parameter of an op for an instance (as it is the instance name)
@@ -1248,6 +1249,7 @@ inferHandledEffect rng handlerSort mbeff ops
         (HandlerBranch name pars expr opSort nameRng rng: _)
           -> -- todo: handle errors if we find a non-operator
              do let isInstance = isHandlerInstance handlerSort
+                env <- getPrettyEnv
                 (qname,tp,info) <- resolveFunName name (CtxFunArgs False (length pars + (if isInstance then 1 else 0)) [] Nothing) rng nameRng
                 (rho,_,_) <- instantiateEx nameRng tp
                 case splitFunType rho of
@@ -1261,8 +1263,9 @@ inferHandledEffect rng handlerSort mbeff ops
                                     (ls,_) ->
                                       case filter isHandledEffect ls of
                                         (l:_) -> return (l)  -- TODO: can we assume the effect comes first?
-                                        _ -> failure $ "Type.Infer.inferHandledEffect: cannot find handled effect in " ++ show eff
-                  _ -> infError rng (text ("cannot resolve effect operation: " ++ show qname ++ ".") <--> text " hint: maybe wrong number of parameters?")
+                                        _ -> -- failure $ "Type.Infer.inferHandledEffect: cannot find handled effect in " ++ show eff
+                                             infError rng (text "not an effect operation:" <+> ppName env qname <.> text ".")
+                  _ -> infError rng (text "cannot resolve effect operation:" <+> ppName env qname <.> text "." <--> text " hint: maybe wrong number of parameters?")
         _ -> infError rng (text "unable to determine the handled effect." <--> text " hint: use a `handler<eff>` declaration?")
 
 
