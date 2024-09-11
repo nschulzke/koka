@@ -25,7 +25,7 @@ module Type.InferMonad( Inf, InfGamma
                       , resolveName
                       , resolveRhsName
                       , resolveFunName
-                      , resolveConName
+                      , resolveConName, resolveConPatternName
                       , resolveImplicitName
 
                       , lookupAppName
@@ -890,6 +890,13 @@ resolveConName name mbType range
   = do (qname,tp,info) <- resolveNameEx isInfoCon Nothing name (maybeToContext mbType) range  range
        return (qname,tp,infoRepr info,infoCon info)
 
+resolveConPatternName :: Name -> Int -> Range -> Inf (Name,Type,Core.ConRepr,ConInfo)
+resolveConPatternName name patternCount range
+  = do (qname,tp,info) <- resolveNameEx isInfoCon Nothing name ctx range  range
+       return (qname,tp,infoRepr info,infoCon info)
+  where
+    ctx = if patternCount > 0 then CtxFunArgs True {-partial?-} patternCount [] Nothing else CtxNone
+
 
 resolveNameEx :: (NameInfo -> Bool) -> Maybe (NameInfo -> Bool) -> Name -> NameContext -> Range -> Range -> Inf (Name,Type,NameInfo)
 resolveNameEx infoFilter mbInfoFilterAmb name ctx rangeContext range
@@ -914,11 +921,11 @@ resolveNameEx infoFilter mbInfoFilterAmb name ctx rangeContext range
                                          table (ctxTerm rangeContext ++
                                                 [(text "inferred type", Pretty.niceType penv tp)
                                                 ,(text "candidates", ppCandidates env amb)] ++ ppImplicitsHint env amb))
-                    (CtxFunArgs fixed named (Just resTp), (_:rest))
+                    (CtxFunArgs matchSome fixed named (Just resTp), (_:rest))
                       -> do let message = "with " ++ show (fixed + length named) ++ " argument(s) matches the result type"
                             infError range (text "no function" <+> Pretty.ppName penv name <+> text message <+>
                                             Pretty.niceType penv resTp <.> ppAmbiguous env "" amb)
-                    (CtxFunArgs fixed named Nothing, (_:rest))
+                    (CtxFunArgs matchSome fixed named Nothing, (_:rest))
                       -> do let message = "takes " ++ show (fixed + length named) ++ " argument(s)" ++
                                           (if null named then "" else " with such parameter names")
                             infError range (text "no function" <+> Pretty.ppName penv name <+> text message <.> ppAmbiguous env "" amb)
@@ -1321,7 +1328,7 @@ lookupImplicitArg allowUnitFunVal infoFilter previousCtxs name ctx range
             alreadyGiven     = case ctx of
                                   CtxFunTypes partial fixed named mbResTp
                                     -> map fst named
-                                  CtxFunArgs n named mbResTp
+                                  CtxFunArgs partial n named mbResTp
                                     -> named
                                   _ -> []
             toResolve        = filter (\(name,_) -> let (pname,_) = splitImplicitParamName name
@@ -1434,8 +1441,8 @@ filterMatchNameContextEx range ctx candidates
       CtxNone         -> return [(name,info,infoType info) | (name,info) <- candidates]
       CtxType expect  -> do mss <- mapM (matchType expect) candidates
                             return (concat mss)
-      CtxFunArgs n named mbResTp
-                      -> do mss <- mapM (matchNamedArgs n named mbResTp) candidates
+      CtxFunArgs partial n named mbResTp
+                      -> do mss <- mapM (matchNamedArgs partial n named mbResTp) candidates
                             return (concat mss)
       CtxFunTypes partial fixed named mbResTp
                       -> do mss <- mapM (matchArgs partial fixed named mbResTp) candidates
@@ -1450,10 +1457,10 @@ filterMatchNameContextEx range ctx candidates
              (Right (_,rho,_,_),_)  -> return [(name,info,rho)]
              (Left _,_)             -> return []
 
-    matchNamedArgs :: Int -> [Name] -> Maybe Type -> (Name,NameInfo) -> Inf [(Name,NameInfo,Rho)]
-    matchNamedArgs n named mbResTp (name,info)
+    matchNamedArgs :: Bool -> Int -> [Name] -> Maybe Type -> (Name,NameInfo) -> Inf [(Name,NameInfo,Rho)]
+    matchNamedArgs matchSome n named mbResTp (name,info)
       = do free <- freeInGamma
-           res <- runUnify (matchNamed range free (infoType info) n named mbResTp)
+           res <- runUnify (matchNamed matchSome range free (infoType info) n named mbResTp)
            case res of
              (Right rho,_)  -> return [(name,info,rho)]
              (Left _,_)     -> return []
@@ -1478,8 +1485,8 @@ filterMatchNameContextEx range ctx candidates
 data NameContext
   = CtxNone       -- ^ just a name
   | CtxType Type  -- ^ a name that can appear in a context with this type
-  | CtxFunArgs  Int [Name] (Maybe Type)         -- ^ function name with @n@ fixed arguments and followed by the given named arguments and a possible result type.
-  | CtxFunTypes Bool [Type] [(Name,Type)] (Maybe Type)  -- ^ are only some arguments supplied?, function name, with fixed and named arguments, maybe a (propagated) result type
+  | CtxFunArgs Bool Int [Name] (Maybe Type)         -- ^ are only some arguments supplied?  @n@ fixed arguments and followed by the given named arguments and a possible result type.
+  | CtxFunTypes Bool [Type] [(Name,Type)] (Maybe Type)  -- ^ are only some arguments supplied? fixed and named arguments, maybe a (propagated) result type
   deriving (Show)
 
 ppNameContext :: Pretty.Env -> NameContext -> Doc
@@ -1489,9 +1496,10 @@ ppNameContext penv ctx
         -> text "_"
       CtxType tp
         -> Pretty.ppType penv tp
-      CtxFunArgs n names mbResTp
+      CtxFunArgs matchSome n names mbResTp
         -> -- text "CtxFunArgs" <+> pretty n <+> list [Pretty.ppName penv name | name <- names] <+> ppMbType penv mbResTp
-           tupled ([text "_" | _ <- [1..n]] ++ [Pretty.ppName penv name <+> text ": _" | name <- names])
+           tupled ([text "_" | _ <- [1..n]] ++ [Pretty.ppName penv name <+> text ": _" | name <- names]
+                   ++ (if matchSome then [text "..."] else []))
            <+> text "->" <+> ppMaybeType mbResTp
       CtxFunTypes some fixed named mbResTp
         -> -- text "CtxFunTypes" <+> pretty some <+> list [Pretty.ppType penv atp | atp <- fixed]
@@ -1522,7 +1530,7 @@ pureMatchShapeNameCtx ctx1 ctx2
 -- Create a name context where the argument count is known (and perhaps some named arguments)
 fixedCountContext :: Maybe (Type,Range) -> Int -> [Name] -> NameContext
 fixedCountContext propagated fixedCount named
-  = CtxFunArgs fixedCount named (fmap fst propagated)
+  = CtxFunArgs False fixedCount named (fmap fst propagated)
 
 -- A fixed argument that has been inferred
 type FixedArg = (Range,Type,Effect,Core.Expr)

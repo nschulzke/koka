@@ -82,8 +82,8 @@ overlaps range free tp1 tp2
 
 
 -- | Does a type have the given named arguments? Return the instantiated type if successful.
-matchNamed :: Range -> Tvs -> Type -> Int -> [Name] -> Maybe Type -> Unify Rho
-matchNamed range free tp n {- given args -} named mbExpResTp
+matchNamed :: Bool -> Range -> Tvs -> Type -> Int -> [Name] -> Maybe Type -> Unify Rho
+matchNamed matchSome range free tp n {- given args -} named mbExpResTp
   = do rho1 <- instantiate range tp
        case splitFunType rho1 of
          Nothing
@@ -111,7 +111,7 @@ matchNamed range free tp n {- given args -} named mbExpResTp
                                  Just expTp -> do subsume range free expTp resTp
                                                   return ()
                                let rest = [(nm,tp) | (nm,tp) <- npars, not (nm `elem` named)]
-                               if (all isOptionalOrImplicit rest)
+                               if (matchSome || all isOptionalOrImplicit rest)
                                 then subst rho1
                                 else unifyError NoMatch
                        else unifyError NoMatch

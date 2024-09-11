@@ -32,7 +32,7 @@ value type bseq<a>
 
 // Isomorphic to (,,,) but unboxed
 value type tuple4<a,b,c,d>
-  Tuple4(fst:a,snd:b,thd:c,field4:d)
+  Tup4(fst:a,snd:b,thd:c,field4:d)
 
 fun bhead(^bs : bseq<a>) : exn a
   match bs
@@ -40,7 +40,7 @@ fun bhead(^bs : bseq<a>) : exn a
 
 fun head(^s : seq<a>) : exn a
   match s
-    ftree-fip/Unit(x) -> x
+    Unit(x,_,_) -> x
     More0(x, _, _) -> x
     More(Pair(x, _, _), _, _) -> x
     More(Triple(x, _, _), _, _) -> x
@@ -64,21 +64,21 @@ fip fun cons(x : a, u3 : reuse3, s : seq<a>, b : buffer) : exn (seq<a>, buffer)
 
 fip fun buncons(bs : bseq<a>) : exn (a, reuse3, bseq<a>)
   val BSeq(s, b) = bs
-  val Tuple4(x, u3, s', b') = uncons(s, b)
+  val Tup4(x, u3, s', b') = uncons(s, b)
   (x, u3, BSeq(s', b'))
 
 fip fun uncons(s : seq<a>, b : buffer) : exn tuple4<a, reuse3, seq<a>, buffer>
   match s
     Unit(x, _, _) ->
-      Tuple4(x, Reuse3(Pad,Pad,Pad), Empty, b)
+      Tup4(x, Reuse3(Pad,Pad,Pad), Empty, b)
     More(Triple(x, y, z), q, u) ->
       val BCons(b', _, _) = b
-      Tuple4(x, Reuse3(Pad,Pad,Pad), More(Pair(y, z, Pad), q, u), b')
+      Tup4(x, Reuse3(Pad,Pad,Pad), More(Pair(y, z, Pad), q, u), b')
     More(Pair(x, y, _), q, u) ->
-      Tuple4(x, Reuse3(Pad,Pad,Pad), More0(y, q, u), b)
+      Tup4(x, Reuse3(Pad,Pad,Pad), More0(y, q, u), b)
     More0(x, q, u) ->
       val (q', b') = more0(q, u, b)
-      Tuple4(x, Reuse3(Pad,Pad,Pad), q', b')
+      Tup4(x, Reuse3(Pad,Pad,Pad), q', b')
 
 fip fun more0(q : seq<tuple<a>>, u : afew<a>, b : buffer) : exn (seq<a>, buffer)
   match q
@@ -91,7 +91,7 @@ fip fun more0(q : seq<tuple<a>>, u : afew<a>, b : buffer) : exn (seq<a>, buffer)
         Three(y, z, w) ->
           val BCons(b', _, _) = b
           (More0(y, Empty, Two(z, w, Pad)), b')
-    ftree-fip/Unit(p, _, _) ->
+    Unit(p, _, _) ->
       match p
         Pair(x, y, _)   -> (More(Pair(x, y, Pad), Empty, u), b)
         Triple(x, y, z) ->
@@ -158,7 +158,7 @@ fip fun reverse-acc(acc : list3<a>, ys : list3<a> ) : list3<a>
 fip fun reverse-append3( xs : list3<a>, tl : list3<a> ) : list3<a>
   reverse-acc(tl,xs)
 
-fip fun (++)(xs : list3<a>, ys : list3<a> ) : list3<a>
+fip fun list3/(++)(xs : list3<a>, ys : list3<a> ) : list3<a>
   append3(xs, ys)
 
 fip fun append3(xs : list3<a>, ys : list3<a> ) : list3<a>
