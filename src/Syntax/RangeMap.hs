@@ -224,13 +224,16 @@ mergeImplicits forInlay rinfos
 
 rangeMapLookup :: Range -> RangeMap -> ([(Range,RangeInfo)],RangeMap)
 rangeMapLookup r (RM rm)
-  = let (rinfos,rm') = span startsAt (dropWhile isBefore rm)
-    in -- trace ("lookup: " ++ show r ++ ": " ++ show rinfos) $
-       (prioritize rinfos, RM rm')
+  = let rinfos0 = dropWhile isBefore rm
+        (rinfos1,rm1') = span startsAt rinfos0
+    in -- trace ("lookup: " ++ show r ++ ": " ++ show rinfos1) $
+       (prioritize rinfos1, RM rm1')
   where
     pos = rangeStart r
+    end = rangeEnd r
     isBefore (rng,_)  = rangeStart rng < pos
     startsAt (rng,_)  = rangeStart rng == pos
+    endsAfter (rng,_) = rangeEnd rng >= end
 
 rangeMapFindIn :: Bool -> Range -> RangeMap -> [(Range, RangeInfo)]
 rangeMapFindIn forInlay rng (RM rm)

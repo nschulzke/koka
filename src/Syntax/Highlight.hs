@@ -322,8 +322,8 @@ adjustContext ctx lex lexs
              LexOp op             | showPlain op == "::" -> CtxType [] "::"
              LexKeyword ":" _       -> CtxType [] ":"
              LexKeyword "type" _    -> CtxType [] "type"
-             LexKeyword "cotype" _  -> CtxType [] "cotype"
-             LexKeyword "rectype" _ -> CtxType [] "rectype"
+             -- LexKeyword "cotype" _  -> CtxType [] "cotype"
+             -- LexKeyword "rectype" _ -> CtxType [] "rectype"
              LexKeyword "alias" _   -> CtxType [] "alias"
              LexKeyword "effect" _  -> CtxType [] "effect"
              LexKeyword "struct" _  -> case dropWhile lexemeIsWhite lexs of

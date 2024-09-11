@@ -51,7 +51,7 @@ type vstrct<a> { VStrct( x:a, i:int ); VStrct2(d:float64,s:string); VStrct3(i:in
 type strct<a> { Strct( x:a, i:int ); Strct2(i:int, s:string); Strct3(x:a)  }
 
 // reference maybe
-reference type rmaybe<a> { RJust(x:a); RNothing }
+type rmaybe<a> { RJust(x:a); RNothing }
 
 fun test-rmaybe( m : rmaybe<int> ) : int
   match m

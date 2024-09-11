@@ -59,9 +59,9 @@ createDataDef emitError emitWarning lookupDataInfo
                               -> return dd -}
                             _ -> return DataDefNormal
 
-                  DataDefAuto | isRec
+                  DataDefAuto _ | isRec
                     -> return DataDefRec
-                  DataDefAuto
+                  DataDefAuto declaredAsStruct
                     -> do dd <- createMaxDataDef conInfos
                           case dd of
                             DataDefValue vr | isEnum
@@ -69,11 +69,11 @@ createDataDef emitError emitWarning lookupDataInfo
                             DataDefValue vr | isIso   -- iso types are preferred as value types
                               -> return dd
                             DataDefValue vr
-                              -> do let wouldGetTagField = (conCount > 1 && not isEnum)
-                                        size = valueReprSize platform vr + (if wouldGetTagField then sizeField platform else 0)
-                                    when ((size <= 2*sizePtr platform) && (maxMembers <= 3) && canbeValue) $
-                                      emitWarning $ text "may be better declared as a value type for efficiency (e.g. 'value type/struct')," <->
-                                                    text "or declared as a reference type to suppress this warning (e.g. 'reference type/struct')"
+                              -> do -- let wouldGetTagField = (conCount > 1 && not isEnum)
+                                    --    size = valueReprSize platform vr + (if wouldGetTagField then sizeField platform else 0)
+                                    -- when (declaredAsStruct && (size <= 2*sizePtr platform) && (maxMembers <= 3) && canbeValue) $
+                                    --     emitWarning $ text "might be better declared as a value type for efficiency (e.g. 'value struct')," <->
+                                    --                   text "or declared as a reference type to suppress this warning (e.g. 'reference struct')"
                                     return DataDefNormal
                             _ -> return DataDefNormal
 
@@ -83,8 +83,8 @@ createDataDef emitError emitWarning lookupDataInfo
                   DataDefValue{} | not resultHasKindStar
                     -> do emitError $ text "is declared as a value type but does not have a value kind ('V')."  -- should never happen?
                           return DataDefNormal
-                  DataDefValue{} | sort == Retractive
-                    -> do emitError $ text "is declared as a value type but is not (co)inductive."
+                  DataDefValue{} | sort /= Inductive
+                    -> do emitError $ text "is declared as a value type but is not inductive."
                           return DataDefNormal
                   DataDefValue{}
                     -> do dd <- createMaxDataDef conInfos

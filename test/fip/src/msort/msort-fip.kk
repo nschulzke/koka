@@ -4,13 +4,10 @@ import std/os/env
 
 alias elem = int32;
 
-reference type pad
-  Pad
-
-reference type unit2
+type unit2
   Unit2(a : pad, b : pad)
 
-reference type pair<a>
+type pair<a>
   Pair(a : a, b : a)
 
 type sublist<a>

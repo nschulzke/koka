@@ -8,31 +8,31 @@ value type vmaybe<a>
   VJust( value : a )
   VNothing
 
-fun default(x,def) 
+fun default(x,def)
   match x
     VJust(v) -> v
     VNothing -> def
 
-reference type imaybe
+type imaybe
   IJust( value : int32 )
   INothing
 
-reference type lmaybe<a>
+type lmaybe<a>
   LJust( value : list<a> )
-  LNothing  
+  LNothing
 
-type xlist<a> 
+type xlist<a>
   XNil
-  XCons( hd : a, tl : xlist<a>)  
+  XCons( hd : a, tl : xlist<a>)
 
 fun ignorex(x)
   "(ignore)"
 
 
-fun ishow( i : int ) 
-  i.show 
+fun ishow( i : int )
+  i.show
 
-noinline fun mshow( mb : xmaybe<a>, vshow : a -> string ) : string 
+noinline fun mshow( mb : xmaybe<a>, vshow : a -> string ) : string
   match mb
     XJust(v) -> "XJust(" ++ vshow(v) ++ ")"
     XNothing -> "XNothing"
@@ -47,7 +47,7 @@ noinline fun jmshow(mb)
     IJust(i) -> "IJust( " ++ show(i) ++ ")"
     INothing -> "INothing"
 
-fun main() 
+fun main()
   mshow( XNothing, ignorex ).println
   mshow( XJust(1), show ).println
   imshow( XJust(1) ).println

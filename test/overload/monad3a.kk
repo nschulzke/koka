@@ -1,11 +1,11 @@
 // monads as implicit parameters
 // use .? to unpack pure and bind
 
-reference struct monad<m  >
+struct monad<m>
   pure : forall<a> a -> m<a>
   bind : forall<a,b> (m<a>, a -> m<b>) -> m<b>
 
-reference struct monadplus<m>
+struct monadplus<m>
   xmonad : monad<m>
   plus   : forall<a> (m<a>,m<a>) -> m<a>
 

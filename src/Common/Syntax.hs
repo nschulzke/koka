@@ -202,30 +202,30 @@ data DataKind = Inductive | CoInductive | Retractive
 
 instance Show DataKind where
   show Inductive = "type"
-  show CoInductive = "cotype"
-  show Retractive = "rectype"
+  show CoInductive = "co type"
+  show Retractive = "div type"
 
 data DataDef = DataDefValue !ValueRepr  -- value type
              | DataDefNormal            -- reference type
              | DataDefEffect{ dataDefIsLinear :: !Bool, dataDefIsNamed :: !Bool }  -- effect types
              | DataDefRec
              | DataDefOpen
-             | DataDefAuto              -- Value or Normal; determined by kind inference
+             | DataDefAuto{ dataDefDeclaredAsStruct :: !Bool }  -- value or reference type: determined by kind inference in (Kind/Repr.hs:createDataDef)
              deriving Eq
 
 instance Show DataDef where
   show dd = case dd of
-              DataDefValue v   -> "val" ++ show v
-              DataDefNormal    -> "normal"
+              DataDefValue v   -> "value" ++ show v
+              DataDefNormal    -> "reference"
               DataDefRec       -> "div"       -- retractive type
               DataDefOpen      -> "open"
-              DataDefAuto      -> "auto"
+              DataDefAuto isStruct -> "auto" ++ (if isStruct then " struct" else "")
 
 dataDefIsRec ddef
   = case ddef of
       DataDefValue{}   -> False
       DataDefNormal    -> False
-      DataDefAuto      -> False
+      DataDefAuto{}    -> False
       _  -> True
 
 dataDefIsOpen ddef

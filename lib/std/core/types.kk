@@ -242,20 +242,10 @@ pub type list<a>
 pub value type box<a>
   con Box( unbox : a )
 
-
 // A padding type `pad`.
 // This is sometimes used for fbip programming to match up the size of constructors for reuse.
 pub reference type pad
   Pad
-
-/*
-// Explicitly heap allocate using the `Hbox` constructor.
-pub reference type hbox<a>
-  con Hbox( unhbox : a )
-
-pub fun hbox( x : a ) : hbox<a>
-  Hbox(x)
-*/
 
 // Prevent inlining an expression by passing it to `keep` (which is a non-inlineable identity function)
 pub noinline fip fun keep( x : a ) : a

@@ -922,7 +922,9 @@ resolveTypeDef isRec recNames (DataType newtp params constructors range vis sort
                       _ -> return dataInfo0
        -}
        -- trace (showTypeBinder newtp') $
-       addRangeInfo range (Decl (show sort) (getName newtp') (mangleTypeName (getName newtp')) Nothing)
+       let declaration = (if sort /= Inductive then "" else (if dataDefIsValue ddef1 then "value " else "reference "))
+                          ++ show sort
+       addRangeInfo range (Decl declaration (getName newtp') (mangleTypeName (getName newtp')) Nothing)
        return (Core.Data dataInfo isExtend)
   where
     conVis (UserCon name exist params result rngName rng vis _) = vis

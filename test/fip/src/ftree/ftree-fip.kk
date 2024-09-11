@@ -2,9 +2,6 @@
 import std/num/int32
 import std/os/env
 
-reference type pad
-  Pad
-
 type reuse3
   Reuse3(a : pad, b : pad, c : pad)
 

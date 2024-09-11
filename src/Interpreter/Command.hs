@@ -156,8 +156,8 @@ commandHelp colors
     ,empty
     ]) <->
     hang 2 (infotext "remarks:" <-> vcat
-    [text "The type command can also be cotype, rectype, or struct."
-    ,text "Use :set -? to see help on command line flags."
+    [-- text "The type command can also be cotype, rectype, or struct."
+     text "Use :set -? to see help on command line flags."
     ])
   where
     cmd c arg explain
@@ -174,17 +174,7 @@ expression
          then return (Define src)
         else if (isPrefixOf "val" src)
          then return (Define src)
-        else if (isPrefixOf "type" src || isPrefixOf "open type" src || isPrefixOf "extend type" src)
-         then return (TypeDef src)
-        else if (isPrefixOf "cotype" src)
-         then return (TypeDef src)
-        else if (isPrefixOf "rectype" src)
-         then return (TypeDef src)
-        else if (isPrefixOf "alias" src)
-         then return (TypeDef src)
-        else if (isPrefixOf "struct" src)
-         then return (TypeDef src)
-        else if (isPrefixOf "enum" src)
+        else if (any (\decl -> isPrefixOf decl src) ["type","open type","extend type","co type","div type","alias","struct"])
          then return (TypeDef src)
          else return (Eval src)
 

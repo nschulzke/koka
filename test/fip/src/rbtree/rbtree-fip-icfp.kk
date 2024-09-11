@@ -1,9 +1,6 @@
 import std/num/int32
 import std/os/env
 
-reference type pad
-  Pad
-
 type color
   Red
   Black

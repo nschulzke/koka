@@ -634,7 +634,7 @@ dataTypeDecl dvis =
                return (vis,vis,vrng,x))
       tbind <- if isExtend
                 then do (qid,rng) <- qtypeid
-                        return (\kind -> TypeBinder qid kind rng rng)
+                        return (\kind -> TypeBinder qid kind rng (combineRanges [vrng,trng,rng]))
                 else tbinderDef
       (tpars,kind,prng) <- typeKindParams
       let name = tbind kind
@@ -650,15 +650,15 @@ dataTypeDecl dvis =
 structDecl dvis =
    do (vis,defvis,ddef,vrng,trng,doc) <-
         (try $
-          do (vis,dvis,rng) <-     do{ rng <- keyword "abstract"; return (Public,Private,rng) }
+          do (vis,dvis,rng1) <-    do{ rng <- keyword "abstract"; return (Public,Private,rng) }
                                <|> do{ (vis,rng) <- visibility dvis; return (vis,vis,rng) }
-             ddef           <-     do { specialId "value"; return (DataDefValue valueReprZero) }
-                               <|> do { specialIdOr "reference" ["ref"];
+             (rng2,ddef)     <-    do { rng <- specialId "value"; return (rng, DataDefValue valueReprZero) }
+                               <|> do { rng <- specialIdOr "reference" ["ref"];
                                         -- pwarningMessage "using 'reference' is deprecated and is always the default now";
-                                        return DataDefNormal }
-                               <|> do { return DataDefAuto }
+                                        return (rng,DataDefNormal) }
+                               <|> do { return (rng1,DataDefAuto True) }
              (trng,doc) <- dockeyword "struct"
-             return (vis,dvis,ddef,rng,trng,doc))
+             return (vis,dvis,ddef,combineRanges [rng1,rng2,trng], trng, doc))
 
       tbind <- tbinderDef
       tpars <- angles tbinders <|> return []
@@ -696,14 +696,14 @@ typeDeclKind
     )
   <|>
     try(
-    do (ddef,isExtend) <-     do { specialId "open"; return (DataDefOpen, False) }
-                          <|> do { specialId "extend"; return (DataDefOpen, True) }
-                          <|> do { specialId "value"; return (DataDefValue valueReprZero, False) }
-                          <|> do { specialIdOr "reference" ["ref","heap"];
-                                   return (DataDefNormal, False) }
-                          <|> return (DataDefAuto, False)
-       (rng,doc) <- dockeyword "type"
-       return (Inductive,rng,doc,ddef,isExtend))
+    do (rng1, ddef,isExtend) <- do { rng <- specialId "open"; return (rng, DataDefOpen, False) }
+                            <|> do { rng <- specialId "extend"; return (rng, DataDefOpen, True) }
+                            <|> do { rng <- specialId "value"; return (rng, DataDefValue valueReprZero, False) }
+                            <|> do { rng <- specialIdOr "reference" ["ref","heap"];
+                                    return (rng, DataDefNormal, False) }
+                            <|> return (rangeNull, DataDefAuto False {-not a struct-}, False)
+       (rng2,doc) <- dockeyword "type"
+       return (Inductive,combineRanges [rng1,rng2],doc,ddef,isExtend))
 
 
 typeKindParams

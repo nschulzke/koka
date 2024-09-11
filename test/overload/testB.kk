@@ -1,9 +1,9 @@
 import testA
 
-reference type foo
+type foo
   Foo(x:int, y:int)
 
-reference type foo2
+type foo2
   Foo2(x:int,y:int)
 
 fun test0( f : foo )
