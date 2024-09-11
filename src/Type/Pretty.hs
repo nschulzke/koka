@@ -261,7 +261,7 @@ prettyDataInfo env0 showBody publicOnly isExtend info@(DataInfo datakind name ki
       (case datakind of
          Inductive -> keyword env "type"
          CoInductive -> keyword env "co type"
-         Retractive  -> keyword env "rec type") <+>  -- this "rec" means a retractive type
+         Retractive  -> keyword env "div type") <+>  -- this "div" means a retractive type or non-(co)inductive type
       -- ppVis env vis <+>
       ppName env name <.> pretty range <.>
       (if null args then empty else space <.> angled (map (ppTypeVar env) args)) <.>

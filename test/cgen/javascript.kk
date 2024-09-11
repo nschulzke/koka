@@ -7,7 +7,7 @@ fun prematureReturn(xs: list<int>): bool {
   }
   if(x == 0) then True else False
 }
- 
+
 fun deepPatternMatching(xs : list<int>) : exn int {
   match(xs) {
     Nil -> 1
@@ -21,7 +21,7 @@ fun deepPatternMatching(xs : list<int>) : exn int {
 fun last2(xs : list<a>) : exn a {
   match(xs) {
     Cons(x,Nil) -> x
-    Cons(_,zs)  -> last2(zs) 
+    Cons(_,zs)  -> last2(zs)
   }
 }
 
@@ -30,7 +30,7 @@ fun main() {
 }
 
 /* optimizations to do: tco
-   desired output: 
+   desired output:
 
     fun last2(xs) /* forall<a> (xs : list<a>) -> exn a */
     { tailcall: for(;;) {
@@ -53,7 +53,7 @@ fun inlineConditional1(x : bool) : int {
 }
 
 /* optimizations to do: inline with conditional expression
-   desired output: 
+   desired output:
 
    var inlineConditional1 = fn(x) {
      return x?0:1;
@@ -68,7 +68,7 @@ fun dontCheckLastCase(x: list<int>) : int {
 }
 
 /* optimizations to do: don't pattern match in last case, since core guarantees full coverage
-   desired output: 
+   desired output:
 
     var dontCheckLastCase = fn(x /* system_core._list<int> */) {
       if(x[0] === 2) {
@@ -78,7 +78,7 @@ fun dontCheckLastCase(x: list<int>) : int {
     };
 */
 
-struct person(age: int, name: string)
+value struct person(age: int, name: string)
 
 fun matchOnStruct(person: person) : int {
   match(person)
@@ -88,7 +88,7 @@ fun matchOnStruct(person: person) : int {
 }
 
 /* optimizations to do: don't pattern match in last case, since core guarantees full coverage
-   desired output: 
+   desired output:
 
     fun matchOnStruct(person) /* (person : person) -> int */
     {
@@ -123,8 +123,8 @@ fun foo3( i : int ) {
   else Eq
 }
 
-/* optimizations to do: tco 
-   desired output: 
+/* optimizations to do: tco
+   desired output:
 
     { tailcall: for(;;) {
       if(predicate()) {

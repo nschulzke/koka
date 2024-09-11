@@ -1,2 +1,4 @@
 // duplicate constructor
-ref type dup {  Dup1(:int); Dup1(:int) }
+reference type dup
+  Dup1(:int)
+  Dup1(:int)

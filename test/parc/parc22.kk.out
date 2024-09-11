@@ -18,7 +18,7 @@ import std/core/debug = std/core/debug pub = "";
 import std/core/delayed = std/core/delayed pub = "";
 import std/core/console = std/core/console pub = "";
 import std/core = std/core = "";
-pub rec type parc/parc22/hello[1,1,2,16] {
+pub div type parc/parc22/hello[1,1,2,16] {
  pub con parc/parc22/World[2,3,2,7](i: int){0,1,8} : (i : int) -> parc/parc22/hello;
 };
 // Automatically generated@ Retrieves the `i` constructor field of the `:hello` type@

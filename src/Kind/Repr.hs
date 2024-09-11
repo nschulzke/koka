@@ -73,7 +73,7 @@ createDataDef emitError emitWarning lookupDataInfo
                                         size = valueReprSize platform vr + (if wouldGetTagField then sizeField platform else 0)
                                     when ((size <= 2*sizePtr platform) && (maxMembers <= 3) && canbeValue) $
                                       emitWarning $ text "may be better declared as a value type for efficiency (e.g. 'value type/struct')," <->
-                                                    text "or declared as a reference type to suppress this warning (e.g. 'ref type/struct')"
+                                                    text "or declared as a reference type to suppress this warning (e.g. 'reference type/struct')"
                                     return DataDefNormal
                             _ -> return DataDefNormal
 

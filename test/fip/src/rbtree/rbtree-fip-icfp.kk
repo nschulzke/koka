@@ -1,7 +1,7 @@
 import std/num/int32
 import std/os/env
 
-ref type pad
+reference type pad
   Pad
 
 type color

@@ -1,10 +1,10 @@
-pub ref type pad
+pub reference type pad
   PadX
 
-ref type reuse3
+type reuse3
   Reuse3(a : pad, b : pad, c : pad)
 
-ref type seq<a>
+type seq<a>
   Empty
   SUnit(a : a, b : pad, c : pad)
   More0(l : a, s : seq<a>, r : pad)

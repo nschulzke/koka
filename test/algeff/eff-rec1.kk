@@ -1,4 +1,4 @@
-effect rec cow {
+div effect cow {
   fun moo() : (() -> <cow,div> ())
 }
 

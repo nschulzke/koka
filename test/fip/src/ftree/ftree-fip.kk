@@ -2,7 +2,7 @@
 import std/num/int32
 import std/os/env
 
-ref type pad
+reference type pad
   Pad
 
 type reuse3
@@ -40,7 +40,7 @@ fun bhead(^bs : bseq<a>) : exn a
 
 fun head(^s : seq<a>) : exn a
   match s
-    Unit(x) -> x
+    ftree-fip/Unit(x) -> x
     More0(x, _, _) -> x
     More(Pair(x, _, _), _, _) -> x
     More(Triple(x, _, _), _, _) -> x
@@ -91,7 +91,7 @@ fip fun more0(q : seq<tuple<a>>, u : afew<a>, b : buffer) : exn (seq<a>, buffer)
         Three(y, z, w) ->
           val BCons(b', _, _) = b
           (More0(y, Empty, Two(z, w, Pad)), b')
-    Unit(p, _, _) ->
+    ftree-fip/Unit(p, _, _) ->
       match p
         Pair(x, y, _)   -> (More(Pair(x, y, Pad), Empty, u), b)
         Triple(x, y, z) ->

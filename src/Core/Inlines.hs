@@ -108,7 +108,7 @@ instance Pretty Inlines where
 
 ppInlines :: Env -> Inlines -> Doc
 ppInlines env (Inlines inlines)
-   = vcat [fill maxwidth (ppName env name) <+> if (inlineRec idef) then text "rec" else empty
+   = vcat [fill maxwidth (ppName env name) <+> if (inlineRec idef) then text "div" else empty
        | (name,idef) <- M.toList inlines]
    where
      maxwidth      = 12

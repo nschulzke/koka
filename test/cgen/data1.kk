@@ -13,19 +13,19 @@
 type void
 
 // enum
-type unit 
+type unit
   Unit
 
 // enum
-type bool 
+type bool
   False
-  True 
+  True
 
 // iso
-type iso 
-  Iso(x:int) 
+type iso
+  Iso(x:int)
 
-ref type any 
+reference type any
   Any
 
 // single struct
@@ -33,7 +33,7 @@ value type pair<a,b> { Pair(x:a, y:b) }
 
 type triple<a,b,c> { Triple(p:pair<a,b>,z:c) }
 
-value struct vtriple<a,b,c>(p:pair<a,b>,z:c) 
+value struct vtriple<a,b,c>(p:pair<a,b>,z:c)
 
 // single
 type single<a> { Single( x:int, y:a, z:bool ) }
@@ -51,17 +51,17 @@ type vstrct<a> { VStrct( x:a, i:int ); VStrct2(d:float64,s:string); VStrct3(i:in
 type strct<a> { Strct( x:a, i:int ); Strct2(i:int, s:string); Strct3(x:a)  }
 
 // reference maybe
-ref type rmaybe<a> { RJust(x:a); RNothing }
+reference type rmaybe<a> { RJust(x:a); RNothing }
 
 fun test-rmaybe( m : rmaybe<int> ) : int
-  match m 
+  match m
     RJust(i) -> i
     RNothing -> 0
 
 value type vmaybe<a> { VJust(x:a); VNothing }
 
 fun test-vmaybe( m : vmaybe<int> ) : int
-  match m 
+  match m
     VJust(i) -> i
     VNothing -> 0
 

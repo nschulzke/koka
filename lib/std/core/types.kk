@@ -245,7 +245,7 @@ pub value type box<a>
 
 /*
 // Explicitly heap allocate using the `Hbox` constructor.
-pub ref type hbox<a>
+pub reference type hbox<a>
   con Hbox( unhbox : a )
 
 pub fun hbox( x : a ) : hbox<a>
