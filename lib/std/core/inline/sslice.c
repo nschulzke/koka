@@ -122,11 +122,11 @@ struct kk_std_core_sslice_Sslice kk_slice_extend_borrow( struct kk_std_core_ssli
   const uint8_t* s1;
   kk_sslice_start_end_borrow(slice,&s0,&s1,ctx);
   const uint8_t* t  = s1;
-  if (cnt >= 0) {
-    do {
+  if (cnt >= 0) { // Positive
+    while (cnt > 0 && *t != 0) { // Don't extend if already at the end of the c string
       t = kk_utf8_next(t);
       cnt--;
-    } while (cnt > 0 && *t != 0);
+    }
   }
   else {  // cnt < 0
     const uint8_t* sstart = s0 - kk_integer_clamp_ssize_t_borrow(slice.start,ctx);

@@ -203,7 +203,7 @@ pub fun test-with1()
 ```
 
 The `with` statement essentially puts all statements that follow it into
-an anynomous function block and passes that as the last parameter. In general:
+an anonymous function block and passes that as the last parameter. In general:
 
 ~ translate
 ```unchecked
@@ -493,7 +493,7 @@ Hover over `square6` to see the inferred effect for `:_e`.
 The inferred effects are not just considered as some extra type information on
 functions. On the contrary, through the inference of effects, &koka; has a very
 strong connection to its denotational semantics. In particular, _the full type
-of a &koka; functions corresponds directly to the type signature of the
+of a &koka; function corresponds directly to the type signature of the
 mathematical function that describes its denotational semantics_. For example,
 using &#x301A;`:t`&#x301B; to translate a type `:t` into its corresponding
 mathematical type signature, we have:
@@ -906,7 +906,7 @@ value struct argb{ alpha: int; color-red: int; color-green: int; color-blue: int
 To support generic polymorphism, sometimes value types are _boxed_. For example, a list
 is polymorphic in its elements. That means that if we construct a list of tuples, like
 `[(1,True)]`, that the element `(1,2)` will be boxed and heap allocated -- essentially
-the compiler transforms this expression into `[Box((1,True)]` internally.
+the compiler transforms this expression into `[Box((1,True))]` internally.
 
 Note that for regular data types and `:int`'s boxing is free (as in isomorphic). Moreover, value types
 up to 63 bits (on a 64-bit platform) are boxed in-place and do not require heap allocation
@@ -1242,7 +1242,7 @@ For example, the type of `pretty` becomes:
 ```unchecked
 fun pretty( d : doc ) : width string
 ```
-as is requires the `:width` effect to be handled (aka,
+as it requires the `:width` effect to be handled (aka,
 the "dynamic binding for `width : int` to be defined",
 aka, the "`:width` capability").
 
@@ -1327,7 +1327,7 @@ This is a total handler and only discharges the `:emit` effect.
 {.learn}
 
 As another example, consider a generic `catch` handler that
-applies an handling function when `:raise` is called on our
+applies a handling function when `:raise` is called on our
 exception example:
 
 ```
@@ -1349,7 +1349,7 @@ fun catch-example()
 The `catch` handler has an interesting type where the action can
 have a `:raise` effect (`: () -> <raise|e> a`) and maybe further effects `:e`,
 while the handling function `hnd` only has effect `:e`. Now consider
-supplying a handing function that itself calls `raise`: in that case, the
+supplying a handling function that itself calls `raise`: in that case, the
 type of `catch` would be instantiated to: `: (hnd: (string) -> <raise> a, action : () -> <raise, raise> a ) : <raise> a`.
 This is correct: the (outer) `:raise` effect of `action` is handled and discharged, but since
 the handling function `hnd` can still cause `raise` to be called, the final effect still contains `:raise`.
@@ -1396,7 +1396,7 @@ fun div42()
 
 #### A State Effect { #sec-state; }
 
-For more examples of the use of `return` operations, we look at a the state effect.
+For more examples of the use of `return` operations, we look at the state effect.
 In its most general form it has just a `set` and `get` operation:
 
 ```
@@ -1490,7 +1490,7 @@ with regard to other approaches:
    of this is the continuation monad (which can express ``call/cc``).
 
 The &koka; compiler internally uses monads and `shift`/`reset` to compile effect handlers though, and
-it compiles handlers into to an internal free monad based on multi-prompt delimited control [@Xie:evp;@Gunter:mprompt].
+it compiles handlers into an internal free monad based on multi-prompt delimited control [@Xie:evp;@Gunter:mprompt].
 By inlining the monadic _bind_ we are able to generate efficient C code that only allocates continuations
 in the case one is actually yielding up to a general `ctl` operation.
 ~
