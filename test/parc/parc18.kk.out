@@ -21,9 +21,9 @@ import std/core = std/core = "";
 pub fun test : forall<a> (xs : list<a>, ys : list<a>) -> list<a>
  = fn(xs: list<0>, ys: list<0>){
  match (xs) {
- (std/core/types/Cons((z: 47), (@pat@xxx: list<0>)) : list<a> )
+ (std/core/types/Cons((z: 49), (@pat@xxx: list<0>)) : list<a> )
  -> (match (ys) {
- (std/core/types/Cons((z@xxx: 47), (@pat@xxx: list<0>)) : list<a> )
+ (std/core/types/Cons((z@xxx: 49), (@pat@xxx: list<0>)) : list<a> )
  -> val _ : ()
  = (match ((std/core/types/@is-unique(ys))) {
  (std/core/types/True() : bool )

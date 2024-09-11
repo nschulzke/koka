@@ -5,7 +5,7 @@ type tree
   Tip
   Node( left : ind<tree>, right : ind<tree> )
 
-ref type ind<a>
+reference type ind<a>
   Ind( ind : a)
 
 fun make( depth : int ) : tree

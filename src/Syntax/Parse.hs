@@ -653,7 +653,7 @@ structDecl dvis =
           do (vis,dvis,rng) <-     do{ rng <- keyword "abstract"; return (Public,Private,rng) }
                                <|> do{ (vis,rng) <- visibility dvis; return (vis,vis,rng) }
              ddef           <-     do { specialId "value"; return (DataDefValue valueReprZero) }
-                               <|> do { specialIdOr "ref" ["reference"];
+                               <|> do { specialIdOr "reference" ["ref"];
                                         -- pwarningMessage "using 'reference' is deprecated and is always the default now";
                                         return DataDefNormal }
                                <|> do { return DataDefAuto }
@@ -689,7 +689,7 @@ enum
 typeDeclKind :: LexParser (DataKind,Range,String,DataDef, Bool)
 typeDeclKind
   = try(
-    do (rng1,kind) <-     do{ rng <- specialId "rec"; return (rng,Retractive) }
+    do (rng1,kind) <-     do{ rng <- specialIdOr "div" ["rec"]; return (rng,Retractive) }
                       <|> do{ rng <- specialId "co"; return (rng,CoInductive) }
        (rng2,doc)  <- dockeyword "type"
        return (kind,combineRanges [rng1,rng2],doc,DataDefNormal,False)
@@ -699,7 +699,7 @@ typeDeclKind
     do (ddef,isExtend) <-     do { specialId "open"; return (DataDefOpen, False) }
                           <|> do { specialId "extend"; return (DataDefOpen, True) }
                           <|> do { specialId "value"; return (DataDefValue valueReprZero, False) }
-                          <|> do { specialIdOr "ref" ["reference"];
+                          <|> do { specialIdOr "reference" ["ref","heap"];
                                    return (DataDefNormal, False) }
                           <|> return (DataDefAuto, False)
        (rng,doc) <- dockeyword "type"
@@ -858,7 +858,7 @@ parseEffectDecl dvis =
              isInstance <- do{ keyword "named"; return True } <|> return False
              isScoped   <- do{ specialId "scoped"; return True } <|> return False
              (rng1,singleShot) <- do{ rng <- specialId "linear"; return (rng,True) } <|> return (rangeNull,False)
-             sort              <- do{ specialId "rec"; return Retractive } <|> return Inductive
+             sort              <- do{ specialIdOr "div" ["rec"]; return Retractive } <|> return Inductive
              (rng2,doc)        <- dockeyword "effect"
              let erng = combineRange rng1 rng2
              return (vis,vis,vrng,erng,doc,singleShot,sort,isInstance,isScoped))
@@ -2102,12 +2102,12 @@ appexpr allowTrailingLam
           = expr
         injectApply expr fargs
           = case expr of
-              App fun args rng -> 
+              App fun args rng ->
                 App fun (positional ++ named) rng
-                where 
-                  positional :: [(Maybe (Name, Range), UserExpr)] 
+                where
+                  positional :: [(Maybe (Name, Range), UserExpr)]
                   positional = [(Nothing,a) | (Nothing, a) <- args] ++ nfargs
-                  named :: [(Maybe (Name, Range), UserExpr)] 
+                  named :: [(Maybe (Name, Range), UserExpr)]
                   named = [(Just n,a) | (Just n,a) <- args]
               _                -> App expr nfargs (combineRanged expr fargs)
           where

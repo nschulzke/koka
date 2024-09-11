@@ -1,4 +1,4 @@
-ambient rec fun moo() : (() -> <moo,div> ())
+div effect fun moo() : (() -> <moo,div> ())
 
 fun main() {
   with fun moo() {

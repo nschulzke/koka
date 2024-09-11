@@ -259,7 +259,7 @@ parseTypeMod
  <|> do dataEff <- parseDataEffect
         (
               do{ specialId "co"; return (DataDefNormal, False, CoInductive, dataEff) }
-          <|> do{ specialId "rec"; return (DataDefNormal, False, Retractive, dataEff) }
+          <|> do{ specialId "div"; return (DataDefNormal, False, Retractive, dataEff) }
           <|> return (DataDefNormal, False, Inductive, dataEff))
  <?> ""
 
@@ -464,7 +464,7 @@ parseAtom env
 parseLet :: Env -> LexParser Expr
 parseLet env
   = {-
-    do specialId "rec"
+    do specialId "div"
        (env',dgs) <- semiBraced (parseDefGroups env)
        let defs = [def | DefNonRec def <- dgs]
        expr <- parseExpr env'

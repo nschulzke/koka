@@ -45,9 +45,9 @@ fun example1()
 // (where the argument types may need to be instantiated enough to disambiguate)
 //
 // In other words, any call
-//  `list-eq-explicit(_,_)`
-// is essentially expanded to
-//  `list-eq-explicit(_,_,eq)`
+//  `list-eq(_,_)`
+// is essentially expanded at the call site to
+//  `list-eq(_,_,eq)`
 //
 // So, in the recursive call below, `list-eq(xx,yy)`, the implicit
 // parameter is resolved to the local `eq` parameter itself.
@@ -65,7 +65,7 @@ fun example2()
 
 // Sometimes, the implicit parameter can still not be disambiguated.
 // In that case we can either use a local definition or an implicit parameter again.
-// (ironically, the implicit parameters themselves must be declared explicitly :-))
+// (ironically, implicit parameters themselves must be declared explicitly :-))
 fun eq-refl(xx, ?eq)
   list-eq(xx,xx)
 
@@ -132,12 +132,12 @@ fun int/compare( x : int, y : int ) : order
 // We can now choose to resolve `?eq` either as `int/eq`, or `compare/eq(_,_,?compare=?int/compare)`
 // The compiler disambiguates always using the _shortest chain_ (i.e. `int/eq`)
 fun example7()
-  eq([1,2],[1,2])       // ?eq=int/eq
+  eq([1,2],[1,2])       // eq=list/eq(_,_,int/eq)
 
 // However, any conversion chain ending in (the most) local parameters still takes precedence.
 // (so the full disambiguation rule is _most locals_, _shortest chain_)
 fun test1(?compare)
-  eq([1,2],[1,2])       // ?eq=compare/eq(_,_,?compare=?compare)
+  eq([1,2],[1,2])       // eq=compare/eq(_,_,?compare=?compare)
 
 
 // Sometimes we need multiple implicit parameters resolving to the same name.

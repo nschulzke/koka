@@ -266,9 +266,9 @@ matchRevQualifierPaths upaths paths
 
     matchPaths (umpath,[]) (mpath,lpath)  -- not (null lpath)
       = (umpath `isPrefixOf` lpath) ||    -- user module is a postfix the local qualifier
-        (lpath `isPrefixOf` umpath && (drop (length lpath) umpath) `isPrefixOf` mpath) ||  -- stradle both
-        (umpath `isPrefixOf` mpath)       -- user module is postfix of the module qualifier
-                                          -- (we can not mention local qualifiers, so `std/core/show` matches `std/core/#int/show` for example)
+        (lpath `isPrefixOf` umpath && (drop (length lpath) umpath) `isPrefixOf` mpath)   -- stradle both
+        -- (umpath `isPrefixOf` mpath)       -- user module is postfix of the module qualifier
+        --                                  -- (we can not mention local qualifiers, so `std/core/show` matches `std/core/#int/show` for example)
 
     -- user specified local path: umpath/#ulpath must be a valid postfix of  mpath/#lpath
     matchPaths (umpath,ulpath) (mpath,lpath)  -- not (null ulpath)

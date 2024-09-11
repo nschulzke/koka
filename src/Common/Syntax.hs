@@ -217,7 +217,7 @@ instance Show DataDef where
   show dd = case dd of
               DataDefValue v   -> "val" ++ show v
               DataDefNormal    -> "normal"
-              DataDefRec       -> "rec"
+              DataDefRec       -> "div"       -- retractive type
               DataDefOpen      -> "open"
               DataDefAuto      -> "auto"
 

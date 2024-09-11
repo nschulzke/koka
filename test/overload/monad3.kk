@@ -1,11 +1,11 @@
 // monads as implicit parameters
 // use ?? to unpack pure and bind
 
-ref struct monad<m>
+reference struct monad<m>
   pure : forall<a> a -> m<a>
   bind : forall<a,b> (m<a>, a -> m<b>) -> m<b>
 
-ref struct monadplus<m>
+reference struct monadplus<m>
   base  : monad<m>                          // field names starting with "base" get unpacked recursively in ??
   plus  : forall<a> (m<a>,m<a>) -> m<a>
 

@@ -164,14 +164,29 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\.koka\debug\interactive.c" />
     <ClCompile Include="..\..\..\.koka\debug\std_core.c" />
+    <ClCompile Include="..\..\..\.koka\debug\std_core_bool.c" />
+    <ClCompile Include="..\..\..\.koka\debug\std_core_char.c" />
+    <ClCompile Include="..\..\..\.koka\debug\std_core_console.c" />
+    <ClCompile Include="..\..\..\.koka\debug\std_core_debug.c" />
+    <ClCompile Include="..\..\..\.koka\debug\std_core_delayed.c" />
+    <ClCompile Include="..\..\..\.koka\debug\std_core_either.c" />
+    <ClCompile Include="..\..\..\.koka\debug\std_core_exn.c" />
     <ClCompile Include="..\..\..\.koka\debug\std_core_hnd.c" />
+    <ClCompile Include="..\..\..\.koka\debug\std_core_int.c" />
+    <ClCompile Include="..\..\..\.koka\debug\std_core_list.c" />
+    <ClCompile Include="..\..\..\.koka\debug\std_core_maybe.c" />
+    <ClCompile Include="..\..\..\.koka\debug\std_core_order.c" />
+    <ClCompile Include="..\..\..\.koka\debug\std_core_show.c" />
+    <ClCompile Include="..\..\..\.koka\debug\std_core_sslice.c" />
+    <ClCompile Include="..\..\..\.koka\debug\std_core_string.c" />
+    <ClCompile Include="..\..\..\.koka\debug\std_core_tuple.c" />
     <ClCompile Include="..\..\..\.koka\debug\std_core_types.c" />
-    <ClCompile Include="..\..\..\.koka\debug\std_os_env.c" />
-    <ClCompile Include="..\..\..\.koka\debug\std_os_flags.c" />
-    <ClCompile Include="..\..\..\.koka\debug\std_os_path.c" />
-    <ClCompile Include="..\..\..\.koka\debug\std_text_parse.c" />
+    <ClCompile Include="..\..\..\.koka\debug\std_core_undiv.c" />
+    <ClCompile Include="..\..\..\.koka\debug\std_core_unsafe.c" />
+    <ClCompile Include="..\..\..\.koka\debug\std_core_vector.c" />
+    <ClCompile Include="..\..\..\.koka\debug\test_cgen_box4.c" />
+    <ClCompile Include="..\..\..\.koka\debug\test_cgen_box4__main.c" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="kklib.natvis" />

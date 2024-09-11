@@ -715,7 +715,7 @@ genDrop name = do shape <- getShapeInfo name
 -- get the dup/drop function
 dupDropFun :: Bool -> Type -> Maybe (ConRepr,Name) -> Maybe Int -> Expr -> Expr
 dupDropFun False {-drop-} tp (Just (conRepr,_)) (Just scanFields) arg
-   | not (conReprIsValue conRepr) && not (isConAsJust conRepr) && not (isBoxType tp) -- drop with known number of scan fields
+   | scanFields > 0 && not (conReprIsValue conRepr) && not (isConAsJust conRepr) && not (isBoxType tp) -- drop with known number of scan fields
   = App (Var (TName name coerceTp) (InfoExternal [(C CDefault, "dropn(#1,#2)")])) [arg,makeInt32 (toInteger scanFields)]
   where
     name = nameDrop

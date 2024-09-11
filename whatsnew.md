@@ -6,10 +6,16 @@ Koka is a strongly typed functional-style language with effect types and handler
 generating direct C code without needing a runtime system. To learn more:
 
 * View the Koka __Samples__ in VS Code by opening the command panel (`Ctrl/Cmd+Shift+P`),
-  and running the **`Koka: Open samples`** command. 
+  and running the **`Koka: Open samples`** command.  
   (when you start typing the command will surface to the top).
 
 * Read the [Koka book][kokabook] for a tour of the Koka language and its specification.
+
+### v3.1.3, 2024
+
+- Declare reference types as `reference type` (instead of `ref type`).
+
+- Various bug fixes.
 
 ### v3.1.2, 2024-05-30
 
