@@ -11,6 +11,12 @@ generating direct C code without needing a runtime system. To learn more:
 
 * Read the [Koka book][kokabook] for a tour of the Koka language and its specification.
 
+### v3.1.3, 2024
+
+- Declare reference types as `reference type` (instead of `ref type`).
+
+- Various bug fixes.
+
 ### v3.1.2, 2024-05-30
 
 - Interim release to fix the Koka installation from VS Code when starting outside of a workspace.
