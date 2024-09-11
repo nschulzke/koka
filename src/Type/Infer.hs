@@ -1288,7 +1288,7 @@ checkCoverage rng effect handlerConName branches
         in (qualify modName (newQualified (nameModule fname) opName), opSort)
 
     branchToOpName hbranch
-      = (qualify modName $
+      = (qualify modName $ unqualify $
          if (isValueOperationName (hbranchName hbranch))     -- .val-<op>
           then fromValueOperationsName (hbranchName hbranch) else hbranchName hbranch,
          hbranchSort hbranch)

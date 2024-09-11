@@ -445,7 +445,7 @@ nameIsNil :: Name -> Bool
 nameIsNil name
   = null (nameStem name) && null (nameModule name)
 
-qualify :: Name -> Name -> Name
+qualify :: HasCallStack => Name -> Name -> Name
 qualify (Name m hm _ 0 _ 0) (Name _ 0 l hl n hn)     = Name m hm l hl n hn
 qualify (Name m1 _ _ 0 _ 0) name@(Name m2 _ _ _ _ _) | m1 == m2 = name
 qualify n1 n2
