@@ -46,6 +46,9 @@ fun example4a(x : int)       // the type is required to resolve `foo(x)` to `int
 // In Koka, a program with fully qualified names has an _untyped dynamic semantics_,
 // i.e. we can execute a program without knowing any types (including effect handlers).
 // This is in contrast to a system with type classes (like Haskell or Lean) where the
-// types are essential (as one cannot disambiguate instances otherwise).
+// types are essential (as one cannot disambiguate instances otherwise, e.g. consider `show []`
+// where the behavior depends on the type of sub-expression `[]`, like `[Char]` (=`""`) or `[Int]` (=`[]`)).
 fun example4b(x)
   int/foo(x) + foo("hi there")   // without more type information, we need to qualify explicitly
+
+// Continue reading `implicits.kk` on how to combine overloading with implicit parameters.
