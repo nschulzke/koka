@@ -37,7 +37,7 @@ import Core.Pretty
 import Core.CoreVar
 
 trace s x =
-  Lib.Trace.trace s
+  -- Lib.Trace.trace s
     x
 
 monadicLift :: Pretty.Env -> CorePhase b ()

@@ -40,7 +40,7 @@ import Core.Pretty
 import Core.CoreVar
 
 trace s x =
-  Lib.Trace.trace s
+  -- Lib.Trace.trace s
     x
 
 traceGroups :: [DefGroup] -> String

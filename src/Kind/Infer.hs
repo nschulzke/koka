@@ -501,7 +501,8 @@ infResolveX tp ctx rng
               do  effect <- case skind of
                               KICon kind | kind == kindLabel   -> return infTp
                               KICon kind | isKindHandled kind
-                                -> do wrap <- trace ("lift: " ++ show infTp) $ getEffectLift infTp
+                                -> do wrap <- -- trace ("lift: " ++ show infTp) $
+                                              getEffectLift infTp
                                       return $ wrap infTp rng
 
                               -- KICon kind | isKindHandled kind  -> return (makeHandled infTp rng)
