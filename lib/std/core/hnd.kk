@@ -203,6 +203,10 @@ pub extern @evv-index<e::E,h>( htag : htag<h> ) : e ev-index
   c  "kk_evv_index"
   js "__evv_index"
 
+// Get evidence at a mask level for duplicate labels.
+pub inline extern @evv-index-mask( i : ev-index, mask-level : ev-index ) : e ev-index
+  inline "#1+#2"
+
 // Get the current evidence vector.
 extern evv-get() : e evv<e>
   c  "kk_evv_get"

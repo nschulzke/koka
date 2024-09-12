@@ -168,6 +168,12 @@ resOpen (Env penv gamma) eopen effFrom effTo tpFrom tpTo@(TFun targs _ tres) exp
                                                           (kindFunN (map getKind tpArgs ++ [kindEffect,kindStar]) kindStar))
                                in (makeTypeApp (resolve (toEffectTagName name)) tpArgs, typeApp hndCon tpArgs)
                      in App (makeTypeApp (resolve nameEvvIndex) [effTo,hndTp]) [htagTp]
+
+                 -- get the index of an effect type but at mask-level (used for duplicate labels)
+                 evIndexOfMask (l,0)     = evIndexOf l
+                 evIndexOfMask (l,level) = App (makeTypeApp (resolve nameEvvIndexMask) [effTo]) 
+                                               [evIndexOf l, makeEvIndex level]
+
              in case lsFrom of
                  []  -> -- no handled effect, use cast
                         case lsTo of
@@ -188,18 +194,31 @@ resOpen (Env penv gamma) eopen effFrom effTo tpFrom tpTo@(TFun targs _ tres) exp
                          then wrapper (resolve (nameOpenAt n)) [evIndexOf l]
                          else wrapperThunk (resolve (nameOpenAt 0)) [evIndexOf l]
 
-                 _ -> --failure $ "Core.OpenResolve.resOpen: todo: from: " ++ show (ppType penv effFrom) ++ ", to " ++ show (ppType penv effTo)
-                      --           ++ " with handled: " ++ show (map (ppType penv) lsFrom, map (ppType penv) lsTo)
-                      let indices = makeVector typeEvIndex (map evIndexOf lsFrom)
-                      in if (n <= 3)
+                 _ -> trace ("  N handled: " ++ show (ppType penv effFrom) ++ ", to " ++ show (ppType penv effTo)
+                                 ++ " with handled: " ++ show (map (ppType penv) lsFrom, map (ppType penv) lsTo)) $
+                      let indices = makeVector typeEvIndex (map evIndexOfMask (addLevels lsFrom))
+                      in trace ("  levels: " ++ show (addLevels lsFrom)) $
+                         if (n <= 3)
                           then wrapper (resolve (nameOpen n)) [indices]
                           else wrapperThunk (resolve (nameOpen 0)) [indices]
 
 resOpen (Env penv gamma) eopen effFrom effTo tpFrom tpTo expr
   = failure $ "Core.OpenResolve.resOpen: open applied to a non-function? " ++ show (ppType penv effTo)
 
+-- Add mask level to each label to account for duplicate labels (issue #511)
+addLevels :: [Tau] -> [(Tau,Integer)]
+addLevels []     = []
+addLevels (l:ls) = (l,0) : addLevelsPrev (labelName l,0) ls
+
+addLevelsPrev :: (Name,Integer) -> [Tau] -> [(Tau,Integer)]
+addLevelsPrev _ [] = []
+addLevelsPrev (namePrev,levelPrev) (l:ls) 
+  = let name  = labelName l
+        level = if namePrev == name then levelPrev+1 else 0
+    in (l,level) : addLevelsPrev (name,level) ls
 
 
+-- Do the label match exactly?
 matchLabels (l1:ls1) (l2:ls2) = (labelName l1 == labelName l2) && matchLabels ls1 ls2
 matchLabels [] []             = True
 matchLabels _ _               = False

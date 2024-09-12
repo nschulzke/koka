@@ -275,7 +275,7 @@ More advanced projects:
 * [ ] Expose the "bytes" primitive data together with views..
 * [ ] Improve C code generation by identifying output that could be better; also in effectful code we generate many join-points (see [9]),
       can we increase the sharing/reduce the extra code.
-* [ ] The compiler always analyses module dependencies and builds any needed dependencies. The current code
+* [x] The compiler always analyses module dependencies and builds any needed dependencies. The current code
       (in `src/Compiler/Compile.hs`) is not great and it would be nice to factorize the "make" functionality out
       and also allow for parallel builds.
 
@@ -284,7 +284,7 @@ Master/PhD level:
 * [x] Better language level FBIP support with guaranteed datatype matching, automatic derivative and visitor generation.
 * [x] Float up `open` calls to improve effect handling (worked on by Naoya Furudono)
 * [x] Formalize opening and closing effect row types (worked on by Kazuki Ikemori)
-* [ ] Can we use C++ exceptions to implement "zero-cost" `if yielding() ...` branches and remove the need join points (see [9]).
+* [ ] Can we use C++ exceptions to implement "zero-cost" `if yielding() ...` branches and remove the need for join points (see [9]).
 * [ ] Improve case-of-known simplification with shape information
 
 Currently being worked on:

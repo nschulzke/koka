@@ -50,7 +50,7 @@ module Common.NamePrim
           -- Effects
           , nameTpHTag, nameHTag
           , nameTpClause, namePerform
-          , nameTpEvv, nameEvvAt, nameEvvIndex
+          , nameTpEvv, nameEvvAt, nameEvvIndex, nameEvvIndexMask
           , nameOpenAt, nameOpen, nameOpenNone
           , nameTpEv, nameHandle, nameNamedHandle
           , nameTpResumeContext
@@ -324,6 +324,7 @@ nameHTag        = coreHndName "@new-htag"
 namePerform i   = coreHndName ("@perform" ++ show i)
 nameEvvAt       = coreHndName "@evv-at"
 nameEvvIndex    = coreHndName "@evv-index"
+nameEvvIndexMask= coreHndName "@evv-index-mask"
 nameMaskAt      = coreHndName "@mask-at"
 nameMaskBuiltin = coreHndName "@mask-builtin"
 nameOpenAt i    = coreHndName ("@open-at" ++ show i)
