@@ -39,6 +39,11 @@ inline extern unsafe-vector : forall<a> ( n : ssize_t ) -> total vector<a>
   cs inline "(new ##1[#1])"
   js inline "Array(#1)"
 
+pub extern @unsafe-vector : forall<a> ( n : ssize_t ) -> total vector<a>
+  c  inline "kk_vector_alloc(#1,kk_box_null(),kk_context())"
+  cs inline "(new ##1[#1])"
+  js inline "Array(#1)"
+
 // Assign to an entry in a local `:vector` variable.
 pub inline extern assign/@index( ^self : local-var<s,vector<a>>, ^index : int, assigned : a ) : <local<s>,exn|e> ()
   c  "kk_ref_vector_assign_borrow"

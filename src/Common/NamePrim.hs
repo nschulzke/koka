@@ -154,7 +154,9 @@ module Common.NamePrim
 
 
           , nameTpOptional
-          , nameTpArray, nameTpVector, nameVector
+          , nameTpArray, nameTpVector
+          , nameVector, nameVectorFromList
+          , nameVectorUnsafeCreate
 
           , nameTpTotal, nameTpDiv, nameTpPartial, nameTpPure
           , nameTpST
@@ -250,7 +252,9 @@ nameCoreFileModule = qualify nameCoreDebug (newLocallyQualified "" "file" "kk-mo
 {--------------------------------------------------------------------------
   std/core/vector
 --------------------------------------------------------------------------}
-nameVector      = coreVectorName "unvlist"
+nameVector              = coreVectorName "unvlist"
+nameVectorFromList      = newLocallyQualified "std/core/vector" "list" "vector"
+nameVectorUnsafeCreate  = coreVectorName "@unsafe-vector"
 
 {--------------------------------------------------------------------------
   std/core/int

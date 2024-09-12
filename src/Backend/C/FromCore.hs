@@ -13,6 +13,7 @@ import Platform.Config(version)
 import Lib.Trace
 import Control.Applicative hiding (empty)
 import Control.Monad
+import Data.Maybe( isJust )
 import Data.List ( intersperse, partition, sortOn )
 import Data.Char
 -- import Data.Maybe
@@ -1867,6 +1868,30 @@ genApp f args
 
 
 genAppNormal :: Expr -> [Expr] -> Asm ([Doc],Doc)
+
+-- special: vector of a constant list
+genAppNormal (Var tname _) [xs] | getName tname `elem` [nameVectorFromList,nameVector] && isConsList xs
+  = -- trace ("found list/vector: " ++ show xs) $
+    do let (Just elems) = extractConsList xs
+       (decls,elemDocs) <- genInlineableExprs elems
+       vec <- genVarName "vec"
+       buf <- genVarName "buf"
+       let create  = ppName nameVectorUnsafeCreate <.> arguments [genLitSSizeT (toInteger (length elems))]
+           vecDecl = text "kk_vector_t" <+> vec <+> text "=" <+> create <.> semi
+           bufDecl = text "kk_box_t*" <+> buf <+> text "= kk_vector_buf_borrow" <.> arguments [vec,text "NULL"] <.> semi
+           assigns = [buf <.> text "[" <.> pretty i <.> text "] =" <+> elemDoc <.> semi | (i,elemDoc) <- zip [0::Int ..] elemDocs]
+       return (decls ++ [vecDecl,bufDecl] ++ assigns,vec)           
+  where 
+    isConsList xs = isJust (extractConsList xs)
+    extractConsList (Con tname repr) | getName tname == nameListNil  
+      = Just []
+    extractConsList (App (Con tname repr) [hd,tl]) | getName tname == nameCons
+      = case extractConsList tl of
+          Just xs -> Just (hd:xs)
+          _       -> Nothing
+    extractConsList e = -- trace ("unknown type: " ++ show e) $ 
+                        Nothing
+
 -- special: allocat
 genAppNormal (Var allocAt _) [Var at _, App (Con tname repr) args]  | getName allocAt == nameAllocAt
   = do (decls,argDocs) <- genInlineableExprs args
