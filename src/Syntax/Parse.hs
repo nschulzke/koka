@@ -864,13 +864,14 @@ parseEffectDecl dvis =
              return (vis,vis,vrng,erng,doc,singleShot,sort,isInstance,isScoped))
      (do (effectId,irng) <- typeid
          (tpars,kind,prng) <- typeKindParams
-         effectsExtra <- if (not isInstance) then return (EffectExtra [])
+         effectsExtra <- let extra = [] -- if sort==Retractive then [TpCon nameTpDiv irng] else []
+                         in if (not isInstance) then return (EffectExtra extra)
                             else do keyword "in"
                                     tp <- ptype
-                                    return (EffectReplace [tp,TpCon nameTpPartial irng])
+                                    return (EffectReplace ([tp,TpCon nameTpPartial irng] ++ extra))
                                  <|>
-                                    return (if (isScoped) then (EffectExtra []) -- use regular effect type
-                                                          else (EffectReplace [TpCon nameTpPartial irng]))
+                                    return (if (isScoped) then (EffectExtra extra) -- use regular effect type
+                                                          else (EffectReplace ([TpCon nameTpPartial irng]++extra)))
                                     -- todo: still need to add TpNamed for the JavaScript backend?
                                     -- return (Just (TpCon nameTpNamed irng))  -- todo: needed only if not using exn?
          (operations, xrng) <- semiBracesRanged (parseOpDecl singleShot defvis)
@@ -987,14 +988,14 @@ makeEffectDecl decl =
       {- scopeEff    = TpApp (TpCon nameTpScope krng) [TpVar (tbinderName tb) krng | tb <- tparsScoped] krng
       extraEffects = (if (isScoped && isInstance) then [scopeEff] else [])
                      ++ -}
-      extraEffects = if (sort==Retractive) then [TpCon nameTpDiv krng] else []
+      -- extraEffects = [] -- if (sort==Retractive) then [TpCon nameTpDiv krng] else []
 
       -- parse the operations and return the constructor fields and function definitions
       opCount = length operations
       (opFields,opSelects,opDefs,opValDefs)
           = unzip4 $ map (operationDecl opCount vis tparsScoped tparsNonScoped docEffect docx hndName
                                                  id isInstance effectsExtra effTp (tpCon hndTpName)
-                                                 ([hndEffTp,hndResTp]) extraEffects)
+                                                 ([hndEffTp,hndResTp]) sort)
                                                  (zip [0..opCount-1] (sortBy cmpName operations))
       cmpName op1 op2 = compare (getOpName op1) (getOpName op2)
       getOpName op = show (unqualify (opdeclName op))
@@ -1138,10 +1139,10 @@ paramInfo
 -- smart constructor for operations
 operationDecl :: Int -> Visibility -> [UserTypeBinder] -> [UserTypeBinder] ->
                  String -> String -> Name -> Name -> Bool -> EffectExtra -> UserType -> UserType -> [UserTypeBinder] ->
-                 [UserType] -> (Int,OpDecl) ->
+                 DataKind -> (Int,OpDecl) ->
                  (ValueBinder UserType (Maybe UserExpr), UserDef, UserDef, Maybe UserDef)
 operationDecl opCount vis forallsScoped forallsNonScoped docEffect docEffectDecl
-              hndName effName isInstance effectsExtra effTp hndTp hndTpVars extraEffects (opIndex,op)
+              hndName effName isInstance effectsExtra effTp hndTp hndTpVars sort (opIndex,op)
   = let -- teff     = makeEffectExtend rangeNull effTp (makeEffectEmpty rangeNull)
            foralls  = forallsScoped ++ forallsNonScoped
            -- todo: use record operations
@@ -1155,7 +1156,7 @@ operationDecl opCount vis forallsScoped forallsNonScoped docEffect docEffectDecl
            opEffTps = case effectsExtra of
                         EffectExtra extra    -> [effTp] ++ extra
                         EffectReplace extra  -> extra
-           teff0    = foldr (makeEffectExtend krng) (makeEffectEmpty krng) (opEffTps ++ extraEffects)
+           teff0    = foldr (makeEffectExtend krng) (makeEffectEmpty krng) (opEffTps) -- ++ extraEffects)
 
 
            nameA    = newName ".a"
@@ -1174,7 +1175,8 @@ operationDecl opCount vis forallsScoped forallsNonScoped docEffect docEffectDecl
            -- for now add a divergence effect to named effects/resources when there are type variables...
            -- this is too conservative though; we should generate the `ediv` constraint instead but
            -- that is a TODO for now
-           teff     = if (not (null (forallsNonScoped ++ exists)) && isInstance && all notDiv extraEffects)
+           teff     = if (((not (null (forallsNonScoped ++ exists)) && isInstance) || sort==Retractive)
+                           && all notDiv opEffTps)
                        then makeEffectExtend krng (TpCon nameTpDiv krng) teff0
                        else teff0
                     where

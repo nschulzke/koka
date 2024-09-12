@@ -139,7 +139,7 @@ genDoc env kgamma gamma core p
         selfResult tcon def
           = let (_,_,rho) = splitPredType (defType def)
             in case splitFunType rho of
-                 Just (_,_,TCon tc) -> (tc == tcon && TCon tc /= typeUnit)
+                 Just (_,_,TCon tc) -> (tc == tcon && not (eqType (TCon tc) typeUnit))
                  Just (_,_,TApp (TCon tc) _) -> (tc == tcon)
                  _  -> False
 

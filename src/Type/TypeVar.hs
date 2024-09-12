@@ -634,12 +634,12 @@ freshTypeVar kind flavour =
 {--------------------------------------------------------------------------
   Equality between types
 --------------------------------------------------------------------------}
-matchType :: Type -> Type -> Bool
+matchType :: HasCallStack => Type -> Type -> Bool
 matchType tp1 tp2 =
   case (expandSyn tp1, expandSyn tp2) of
     (TForall vs1 ps1 t1, TForall vs2 ps2 t2) ->
       if (vs1 == vs2)
-        then (matchPreds ps1 ps2 && matchType t1 t2)
+        then (matchPreds ps1 ps2 && eqType t1 t2)
         else
           if (length vs1 == length vs2 && all (\(v1, v2) -> getKind v1 == getKind v2) (zip vs1 vs2))
             then

@@ -109,7 +109,7 @@ data CompletionInfo = CompletionInfo
   , argumentType :: Maybe Type
   -- Determines if it is a function completion (. is just prior to the cursor)
   , completionKind :: CompletionKind
-  } deriving (Show,Eq)
+  } deriving (Show)
 
 data CompletionKind = CompletionKindFunction | CompletionKindValue | CompletionKindType | CompletionKindEffectLabel | CompletionKindTypeOrEffect deriving (Show,Eq)
 

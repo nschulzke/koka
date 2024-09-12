@@ -80,7 +80,8 @@ module Type.InferMonad( Inf, InfGamma
 
                       ) where
 
-import Data.List( partition, sortBy, nub, nubBy, intersperse, foldl')
+import Data.Maybe(isNothing)
+import Data.List( partition, sortBy, nub, nubBy, intersperse, foldl', find)
 import Data.Ord(comparing)
 import qualified Data.Set as S
 import Control.Applicative
@@ -359,7 +360,7 @@ isolate rng free ps eff
                    case expandSyn shp of
                      h@(TVar tv)  | tv == heapTv
                        -> do stp <- subst tp
-                             if (not (h `elem` heapTypes stp))
+                             if (isNothing (find (\ht -> eqType h ht) (heapTypes stp)))
                               then return (ev:evs1,evs2) -- even if polymorphic, we are ok if we isolate
                               else return defaultRes
                      _ -> return defaultRes
@@ -486,7 +487,7 @@ findInsts params ls1 ls2
                   -> (subNew (zip params args) |-> ls1, args)
                 _ -> (ls1, map TVar params)
   where
-    matchParams (TApp _ args) = (map TVar params == args)
+    matchParams (TApp _ args) = eqTypes (map TVar params) args
     matchParams _ = False
 
 
@@ -502,7 +503,7 @@ isSubset acc ls1 ls2
             then Nothing
            else if (labelName l1 > labelName l2)
             then isSubset (l2:acc) ls1 ll2
-           else if (l1 == l2)
+           else if (eqType l1 l2)
             then isSubset acc ll1 ll2
             else Nothing
 
@@ -542,7 +543,7 @@ resolveHeapDiv free (ev:evs)
               shp <- subst hp
               let tvsTp = ftv stp
                   tvsHp = ftv hp
-              if (expandSyn shp `elem` heapTypes stp ||
+              if (expandSyn shp `elemType` heapTypes stp ||
                   not (tvsIsEmpty (ftv stp)) -- conservative guess...
                  )
                then do -- return (ev{ evPred = PredSub typeDivergent eff } : evs')

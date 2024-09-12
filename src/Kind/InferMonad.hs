@@ -22,6 +22,7 @@ module Kind.InferMonad( KInfer
                       , addRangeInfo
                       , infQualifiedName
                       , checkExternal
+                      , withDataEffects, lookupDataEffect
                       )  where
 
 
@@ -32,7 +33,7 @@ import Lib.Trace
 import Lib.PPrint
 import Common.Failure( failure )
 import Common.Range
-import Common.Syntax( Platform )
+import Common.Syntax( Platform, DataEffect(..) )
 import Common.ColorScheme
 import Common.Unique
 import Common.Name
@@ -64,6 +65,7 @@ data KSt        = KSt{ kunique :: !Int, ksub :: !KSub, mbRangeMap :: Maybe Range
 data KEnv       = KEnv{ cscheme :: !ColorScheme, platform :: !Platform, currentModule :: !Name, imports :: ImportMap
                       , kgamma :: !KGamma, infgamma :: !InfKGamma, synonyms :: !Synonyms
                       , newtypesImported :: !Newtypes, newtypesExtended :: !Newtypes
+                      , dataEffects :: M.NameMap DataEffect
                       }
 data KResult a  = KResult{ result:: !a, errors:: ![(Range,Doc)], warnings :: ![(Range,Doc)], st :: !KSt }
 
@@ -73,7 +75,7 @@ runKindInfer cscheme platform mbRangeMap moduleName imports kgamma syns datas un
                      Just imp -> imp
                      Nothing  -> imports -- ignore
     in -- trace ("Kind.InferMonad.runKindInfer: current module: " ++ show moduleName) $
-       case ki (KEnv cscheme platform moduleName imports' kgamma M.empty syns datas newtypesEmpty) (KSt unique ksubEmpty mbRangeMap synonymsEmpty M.empty) of
+       case ki (KEnv cscheme platform moduleName imports' kgamma M.empty syns datas newtypesEmpty M.empty) (KSt unique ksubEmpty mbRangeMap synonymsEmpty M.empty) of
          KResult x errs warns (KSt unique1 ksub rm _ _) -> (errs,warns,rm,unique1,x)
 
 
@@ -389,3 +391,18 @@ lookupDataInfo name
       case (newtypesLookupAny name (newtypesExtended env)) of
         Nothing -> return (newtypesLookupAny name (newtypesImported env))
         just    -> return just
+
+
+withDataEffects :: [(Name,DataEffect)] -> KInfer a -> KInfer a
+withDataEffects xs (KInfer ki)
+  = KInfer (\env -> \st -> ki (env{ dataEffects = M.fromList xs }) st)
+
+lookupDataEffect :: Name -> KInfer DataEffect
+lookupDataEffect name
+  = do env <- getKindEnv
+       case M.lookup name (dataEffects env) of
+         Just deff -> return deff
+         Nothing   -> do mbDataInfo <- lookupDataInfo name
+                         case mbDataInfo of
+                           Just di -> return (dataInfoEffect di)
+                           Nothing -> return DataNoEffect

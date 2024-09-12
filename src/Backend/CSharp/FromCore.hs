@@ -567,7 +567,7 @@ genExpr expr
 
 
           -- Optimize case of booleans to if statements or expressions.
-          Case [e] [Branch ps1 [g1], Branch ps2 [g2]] | typeOf e == typeBool && isExprTrue (guardTest g1) && isExprTrue (guardTest g2)
+          Case [e] [Branch ps1 [g1], Branch ps2 [g2]] | eqType (typeOf e) typeBool && isExprTrue (guardTest g1) && isExprTrue (guardTest g2)
             -> if (isAtomic (guardExpr g1) && isAtomic (guardExpr g2))
                 then do d  <- genInline e
                         b1 <- genAtomic (guardExpr g1)
@@ -663,7 +663,7 @@ genStatic tname m n targs mbArgs
                 mbArgs <- getCurrentArgs
                 -- trace ("test rec: " ++ show (getName tname,def,ret,mbArgs,targs)) $ return ()
                 case (ret,mbArgs) of
-                  (True,Just (tpars,parNames)) | def == getName tname && targs == tpars
+                  (True,Just (tpars,parNames)) | def == getName tname && eqTypes targs tpars
                     -> -- tail call
                        assertion ("CSharp.FromCore.genStatic: tail arguments /= arguments") (length args == length parNames) $
                        do assignArguments parNames argDocs args
@@ -698,7 +698,7 @@ genTailCall expr tname targs args
        mbArgs <- getCurrentArgs
        -- trace ("genTailCall: " ++ show (getName tname, def, ret,mbArgs)) $ return ()
        case (ret,mbArgs) of
-         (True,Just (tpars,parNames)) | def == getName tname && targs == tpars
+         (True,Just (tpars,parNames)) | def == getName tname && eqTypes targs tpars
             -> do argDocs <- genArguments args
                   assignArguments parNames argDocs args
                   putLn (text "goto recurse;")

@@ -1233,7 +1233,7 @@ genLambda params eff body
 
        emitToCurrentDef (vcat [linebreak,text "// lift anonymous function", tpDecl, newDef] <.> linebreak)
 
-       bodyDoc <- genStat (ResultReturn (if typeOf body == typeUnit then Just (TName nameNil typeUnit) else Nothing) params) body
+       bodyDoc <- genStat (ResultReturn (if eqType (typeOf body) typeUnit then Just (TName nameNil typeUnit) else Nothing) params) body
        let funDef = funSig <+> block (
                       (if (null fields) then text "kk_unused(_fself);"
                         else let dups = braces (hcat [genDupCall tp (ppName name) <.> semi | (name,tp) <- fields])

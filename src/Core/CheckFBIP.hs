@@ -278,7 +278,7 @@ chkEffect tp
       (taus, tau) -> all isFBIP taus
     isFBIP tp = case expandSyn tp of
         TCon tc -> typeConName tc `elem` [nameEffectEmpty,nameTpDiv,nameTpPartial]
-        TApp tc1 [TCon (TypeCon nm _)] -> tc1 == tconHandled && nm == nameTpPartial
+        TApp tc1 [TCon (TypeCon nm _)] -> eqType tc1 tconHandled && nm == nameTpPartial
         _       -> False
 
 {--------------------------------------------------------------------------

@@ -20,7 +20,7 @@ import Data.Function
 
 import Control.Monad(guard)
 import Lib.PPrint
-import Common.Failure (failure)
+import Common.Failure (failure, HasCallStack)
 import Common.File (splitOn)
 import Common.Range (rangeNull)
 import Common.Syntax
@@ -35,7 +35,7 @@ import Core.Core
 import Core.CoreVar
 import Core.Pretty ()
 import Core.Simplify
-import Type.Type (splitFunScheme, Effect, Type, TypeVar)
+import Type.Type (splitFunScheme, Effect, Type, TypeVar, eqType, eqTypes)
 import Type.TypeVar
 import Type.Pretty
 import Lib.Trace
@@ -430,9 +430,9 @@ usedInThisDef def
     go (Var (TName name _) _) = S.singleton name
     go _ = mempty
 
-allEq :: (Eq a) => [a] -> Bool
+allEq :: HasCallStack => [[Type]] -> Bool
 allEq [] = True
-allEq (x:xs) = all (== x) xs
+allEq (x:xs) = all (eqTypes x) xs
 
 -- list of all params to recursive calls
 -- include the types if the call is a TypeApp

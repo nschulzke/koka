@@ -215,7 +215,8 @@ synAccessors modName info
                   concat paramss
 
         occursOnAllConstrs (name,(tp,rng,pvis,_))
-          = all (\ps -> any (\(n,(t,_,_,_)) -> n == name && t == tp) ps) paramss
+          = not (nameIsNil name) &&
+            all (\ps -> any (\(n,(t,_,_,_)) -> n == name && eqType t tp) ps) paramss
 
         synAccessor :: (Name,(Type,Range,Visibility,ConInfo)) -> DefGroup Type
         synAccessor (name,(tp,xrng,visibility,cinfo))
@@ -347,12 +348,17 @@ infTypeDefs isRec tdefs
   = do -- trace ("infTypeDefs: " ++ show (length tdefs)) $ return ()
        xinfgamma <- mapM bindTypeDef tdefs -- set up recursion
        let infgamma = map fst (filter snd xinfgamma)
-       ctdefs   <- extendInfGamma infgamma $ -- extend inference gamma, also checks for duplicates
+       ctdefs   <- withDataEffects (concatMap getDataEffect (zip infgamma tdefs)) $ -- make effect types visible for lifting to handled
+                   extendInfGamma infgamma $ -- extend inference gamma, also checks for duplicates
                    do let names = map tbinderName infgamma
-                      tdefs1 <- mapM infTypeDef (zip (map fst xinfgamma) tdefs)
+                      tdefs1 <- -- trace ("recursive group: " ++ show infgamma) $
+                                mapM infTypeDef (zip (map fst xinfgamma) tdefs)
                       mapM (resolveTypeDef isRec names) tdefs1
        checkRecursion tdefs -- check for recursive type synonym definitions rather late so we spot duplicate definitions first
        return (Core.TypeDefGroup ctdefs)
+    where
+      getDataEffect (tbind, DataType{ typeDefEffect = deff }) = [(tbinderName tbind, deff)]
+      getDataEffect _ = []
 
 checkRecursion :: [TypeDef UserType UserType UserKind] -> KInfer ()
 checkRecursion tdefs
@@ -495,7 +501,7 @@ infResolveX tp ctx rng
               do  effect <- case skind of
                               KICon kind | kind == kindLabel   -> return infTp
                               KICon kind | isKindHandled kind
-                                -> do wrap <- getEffectLift infTp
+                                -> do wrap <- trace ("lift: " ++ show infTp) $ getEffectLift infTp
                                       return $ wrap infTp rng
 
                               -- KICon kind | isKindHandled kind  -> return (makeHandled infTp rng)
@@ -666,7 +672,7 @@ infTypeDef (tbinder, Synonym syn args tp range vis doc)
 
 infTypeDef (tbinder, td@(DataType newtp args constructors range vis sort ddef dataEff isExtend doc))
   = do infgamma <- mapM bindTypeBinder args
-       constructors' <-  extendInfGamma infgamma (mapM infConstructor constructors)
+       constructors' <- extendInfGamma infgamma (mapM infConstructor constructors)
        -- todo: unify extended datatype kind with original
        reskind <- if dataDefIsOpen ddef then return infKindStar else freshKind
        tbinder' <- unifyBinder tbinder newtp range infgamma reskind
@@ -793,18 +799,15 @@ getEffectLift utp
                       -> getEffectLift tp
       TpParens tp _   -> getEffectLift tp
       TpApp tp _ _    -> getEffectLift tp
-      TpCon name rng  -> do mbInfo <- lookupDataInfo name
-                            case mbInfo of
-                              Just info
-                                 -> case dataInfoEffect info of
-                                      DataEffect named linear
-                                        -> return (\u r -> TpApp (TpCon (makeTpHandled named linear) rangeNull) [u] rangeNull)
-                                      DataNoEffect
-                                        -> --trace ("getEffectLift: no effect: " ++ show utp) $
-                                           return (\tp _ -> tp)
-                              _  -> --trace ("getEffectLift: no data info: " ++ show utp) $
-                                    return (\tp _ -> tp)
-      _               -> --trace ("getEffectLift: strange type " ++ show utp) $
+      TpCon name rng  -> do dataEff <- lookupDataEffect name
+                            case dataEff of
+                              DataEffect named linear
+                                -> -- trace ("getEffectLift: wrap with handled: " ++ show utp) $
+                                   return (\u r -> TpApp (TpCon (makeTpHandled named linear) rangeNull) [u] rangeNull)
+                              DataNoEffect
+                                -> -- trace ("getEffectLift: no effect: " ++ show utp) $
+                                   return (\tp _ -> tp)
+      _               -> trace ("getEffectLift: unexpected type " ++ show utp) $
                          return (\tp _ -> tp)
 
 infParam expected context (name,tp)

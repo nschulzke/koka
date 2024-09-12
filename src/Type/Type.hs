@@ -8,12 +8,14 @@
     Definition of higher-ranked types and utility functions over them.
 -}
 -----------------------------------------------------------------------------
+{-# LANGUAGE InstanceSigs #-}
 module Type.Type (-- * Types
                     Type(..), Scheme, Sigma, Rho, Tau, Effect, InferType, Pred(..)
                   , Flavour(..)
                   , DataInfo(..), DataKind(..), ConInfo(..), SynInfo(..)
                   , dataInfoIsRec, dataInfoIsOpen, dataInfoIsLiteral
                   , conInfoSize, conInfoScanCount
+                  , eqType, eqTypes, elemType
                   -- Predicates
                   , splitPredType, shallowSplitPreds, shallowSplitVars
                   , predType
@@ -71,7 +73,7 @@ module Type.Type (-- * Types
 
 import Lib.Trace
 import Data.Maybe(isJust)
-import Data.List( sortBy )
+import Data.List( sortBy, find )
 
 import Common.Name
 import Common.NamePrim
@@ -556,7 +558,7 @@ makeValueOperation eff tp
   where
     kind = kindFun kindEffect (kindFun kindStar kindStar)
 
-orderEffect :: Tau -> Tau
+orderEffect :: HasCallStack => Tau -> Tau
 orderEffect tp
   = let (ls,tl) = extractOrderedEffect tp
     in foldr effectExtend tl ls
@@ -662,7 +664,7 @@ effectExtendNoDup label eff
   = let (ls,_) = extractEffectExtend label
     in if null ls
         then let (els,_) = extractEffectExtend eff
-             in if (label `elem` els)
+             in if isJust (find (\e -> eqType label e) els) --  (label `elem` els)
                  then eff
                  else appEffectExtend label eff
         else effectExtendNoDups ls eff
@@ -740,6 +742,8 @@ shallowEffectExtend label eff
 
 
 appEffectExtend :: HasCallStack => Type -> Effect -> Effect
+-- appEffectExtend label eff | isKindHandled (kindOf label)
+--  =  TApp (TCon tconEffectExtend) [TApp tconHandled [label],eff]
 appEffectExtend label eff
   = assertion ("label has not kind X: " ++ show (label,eff)) (hasKindLabel label)
     TApp (TCon tconEffectExtend) [label,eff]
@@ -747,7 +751,7 @@ appEffectExtend label eff
   where
     hasKindLabel l
       = let k = kindOf (expandSyn l)
-        in (k == kindLabel || k == kindEffect)
+        in (k == kindLabel || k == kindEffect) -- || isKindHandled k || isKindHandled1 k)
 
 kindOf :: HasCallStack => Tau -> Kind
 kindOf tau
@@ -967,28 +971,34 @@ instance IsType TypeCon where
 {--------------------------------------------------------------------------
   Equality between types
 --------------------------------------------------------------------------}
-instance Eq Type where
-  (==) = matchType
+-- instance Eq Type where
+--  (==) = eqType
 
 instance Eq Pred where
   (==) = matchPred
 
-matchType :: Type -> Type -> Bool
-matchType tp1 tp2
+elemType :: Type -> [Type] -> Bool
+elemType t ts
+  = isJust (find (eqType t) ts)
+
+eqType :: HasCallStack => Type -> Type -> Bool
+eqType tp1 tp2
   = case (expandSyn tp1,expandSyn tp2) of
-      (TForall vs1 ps1 t1, TForall vs2 ps2 t2)  -> (vs1==vs2 && matchPreds ps1 ps2 && matchType t1 t2)
-      (TFun pars1 eff1 t1, TFun pars2 eff2 t2)  -> (matchTypes (map snd pars1) (map snd pars2) && matchEffect eff1 eff2 && matchType t1 t2)
+      (TForall vs1 ps1 t1, TForall vs2 ps2 t2)  -> (vs1==vs2 && matchPreds ps1 ps2 && eqType t1 t2)
+      (TFun pars1 eff1 t1, TFun pars2 eff2 t2)  -> (eqTypes (map snd pars1) (map snd pars2) && matchEffect eff1 eff2 && eqType t1 t2)
       (TCon c1, TCon c2)                        -> c1 == c2
       (TVar v1, TVar v2)                        -> v1 == v2
-      (TApp t1 ts1, TApp t2 ts2)                -> (matchType t1 t2 && matchTypes ts1 ts2)
-      -- (TSyn syn1 ts1 t1, TSyn syn2 ts2 t2)      -> (syn1 == syn2 && matchTypes ts1 ts2 && matchType t1 t2)
+      (TApp t1 ts1, TApp t2 ts2)                -> (eqType t1 t2 && eqTypes ts1 ts2)
+      -- (TSyn syn1 ts1 t1, TSyn syn2 ts2 t2)      -> (syn1 == syn2 && eqTypes ts1 ts2 && eqType t1 t2)
       _ -> False
 
+matchEffect :: HasCallStack => Effect -> Effect -> Bool
 matchEffect eff1 eff2
-  = matchType (orderEffect eff1) (orderEffect eff2)
+  = eqType (orderEffect eff1) (orderEffect eff2)
 
-matchTypes ts1 ts2
-  = and (zipWith matchType ts1 ts2)
+eqTypes :: HasCallStack => [Type] -> [Type] -> Bool
+eqTypes ts1 ts2
+  = and (zipWith eqType ts1 ts2)
 
 matchPreds ps1 ps2
   = and (zipWith matchPred ps1 ps2)
@@ -996,6 +1006,6 @@ matchPreds ps1 ps2
 matchPred :: Pred -> Pred -> Bool
 matchPred p1 p2
   = case (p1,p2) of
-      (PredSub sub1 sup1, PredSub sub2 sup2)  -> (matchType sub1 sub2 && matchType sup1 sup2)
-      (PredIFace n1 ts1, PredIFace n2 ts2)    -> (n1 == n2 && matchTypes ts1 ts2)
+      (PredSub sub1 sup1, PredSub sub2 sup2)  -> (eqType sub1 sub2 && eqType sup1 sup2)
+      (PredIFace n1 ts1, PredIFace n2 ts2)    -> (n1 == n2 && eqTypes ts1 ts2)
       _ -> False

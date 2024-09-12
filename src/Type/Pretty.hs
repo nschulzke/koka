@@ -378,13 +378,13 @@ ppType env tp
                         ppTypeCon env cv
       TApp (TCon con) [_,_] | typeConName con == nameEffectExtend
                     -> let (ls,tl) = shallowExtractEffectExtend tp
-                           tldoc   = if (tl == effectEmpty)
+                           tldoc   = if (matchType tl effectEmpty)
                                       then empty
                                       else text "|" <.> ppType env{prec=precTop} tl
                        in color (colorEffect (colors env)) $
                           case ls of
                             --[]  | tl == effectEmpty && not (coreIface env) -> ppNamePlain env nameTpTotal
-                            [l] | tl == effectEmpty && not (coreIface env) -> ppType env{prec=precAtom} l
+                            [l] | matchType tl effectEmpty && not (coreIface env) -> ppType env{prec=precAtom} l
                             _   -> text "<" <.> hcat (punctuate comma (map (ppType env{prec=precTop}) ls)) <.> tldoc <.> text ">"
 
       TApp (TCon con) [eff,res]
