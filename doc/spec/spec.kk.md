@@ -111,7 +111,7 @@ grammar will draw it's lexemes from the _lex_ production.
 |              | &bar; | `override` &bar; `named`                                               |                         |
 |              | &bar; | `interface` &bar; `break` &bar; `continue` &bar; `unsafe`        | (future reserved words) |
 | &nbsp;       |       |                                                                           |                         |
-| _specialid_  | ::=   | `co` &bar; `rec` &bar; `open` &bar; `extend` &bar; `behind`   |                         |
+| _specialid_  | ::=   | `co` &bar; `div` &bar; `open` &bar; `extend` &bar; `behind`   |                         |
 |              | &bar; | `linear` &bar; `value` &bar; `reference`                            |                         |
 |              | &bar; | `inline` &bar; `noinline` &bar; `initially` &bar; `finally`      |                         |
 |              | &bar; | `js` &bar; `c` &bar; `cs` &bar; `file`                           |                         |
@@ -163,7 +163,7 @@ std/core/(&)
 | &nbsp;       |       |                                                                                                                                                       |    |
 | _symbols_    | ::=   | _symbol_ [_symbol_]{.many}&bar; ``/``                                                                                                             |    |
 | _symbol_     | ::=   | `$` &bar; `%` &bar; ``&`` &bar; `*` &bar; `+`                                                                                             |    |
-|              | &bar; | ``~`` &bar; ``!`` &bar; ``\`` &bar; `^` &bar; ``#``                                                                                       |    |
+|              | &bar; | ``~`` &bar; ``!`` &bar; ``\`` &bar; ``^`` &bar; ``#``                                                                                       |    |
 |              | &bar; | ``=`` &bar; ``.`` &bar; ``:`` &bar; `-` &bar; `?`                                                                                         |    |
 |              | &bar; | _anglebar_                                                                                                                                            |    |
 | _anglebar_   | ::=   | ``<`` &bar; ``>`` &bar; ``\(&bar;\)``                                                                                                           |    |
@@ -522,7 +522,7 @@ ignored.
 | _typedecl_    | ::=   | _typemod_ `type` _typeid_ [_typeparams_]{.opt} [_kannot_]{.opt} [_typebody_]{.opt}                         |    |
 |               | &bar; | _structmod_ `struct` _typeid_ [_typeparams_]{.opt} [_kannot_]{.opt} [_conparams_]{.opt}                    |    |
 | &nbsp;        |       |                                                                                                            |    |
-| _typemod_     | ::=   | `co` &bar; `rec` &bar; `open` &bar; `extend` &bar; _structmod_                                 |    |
+| _typemod_     | ::=   | `co` &bar; `div` &bar; `open` &bar; `extend` &bar; _structmod_                                 |    |
 | _structmod_   | ::=   | `value` &bar; `reference`                                                                               |    |
 | &nbsp;        |       |                                                                                                            |    |
 | _typeid_      | ::=   | _varid_ &bar; ``[]`` &bar; `(` [`,`]{.many} `)` &bar; `<` `>` &bar; `<` [&bar;]{.koka; .code} `>`          |    |
@@ -692,7 +692,7 @@ in an expressions.
 | _effectdecl_  | ::=   | [_named_]{.opt} _effectmod_ `effect` _varid_ [_typeparams_]{.opt} [_kannot_]{.opt} [_opdecls_]{.opt}       |    |
 |               | &bar; | [_named_]{.opt} _effectmod_ `effect` [_typeparams_]{.opt} [_kannot_]{.opt} _opdecl_                        |    |
 |               | &bar; | _named_ _effectmod_ `effect` _varid_ [_typeparams_]{.opt} [_kannot_]{.opt} `in` _type_ [_opdecls_]{.opt}   |    |
-| _effectmod_   | ::=   | [`linear`]{.opt} [`rec`]{.opt}                                                                             |    |
+| _effectmod_   | ::=   | [`linear`]{.opt} [`div`]{.opt}                                                                             |    |
 | _named_       | ::=   | `named`                                                                                                    |    |
 | &nbsp;        |       |                                                                                                            |    |
 | _opdecls_     | ::=   | `{` _semis_ [_opdecl_ _semi_]{.many} `}`                                                                   |    |

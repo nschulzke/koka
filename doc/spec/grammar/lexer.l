@@ -16,7 +16,7 @@
 
 %{
 #define CHECK_BALANCED  // check balanced parenthesis
-#define INSERT_CLOSE_BRACE 
+#define INSERT_CLOSE_BRACE
 #define INSERT_OPEN_BRACE
 #define INDENT_LAYOUT   // use full layout rule based on nested indentation
 #undef LINE_LAYOUT    // use simple layout based on line ending token
@@ -182,7 +182,7 @@ mask                      { return MASK; }
 override                  { return OVERRIDE; }
 named                     { return NAMED; }
 
-rec                       { return ID_REC; }
+div                       { return ID_DIV; }
 co                        { return ID_CO; }
 open                      { return ID_OPEN; }
 extend                    { return ID_EXTEND; }
@@ -306,7 +306,7 @@ r#*\"                    { BEGIN(rawstring);          /* " for editor highlighti
                           }
 
   /* --------- Raw string literals --------- */
-<rawstring>\"#*           { int count = rawStringGetDelimCount(yyscanner); 
+<rawstring>\"#*           { int count = rawStringGetDelimCount(yyscanner);
                             int scanned = yyleng - YY_MORE_ADJ;
                             if (count > scanned) {
                               // keep going
@@ -508,7 +508,7 @@ static bool isAppToken( Token token ) {
 
 #ifdef INSERT_OPEN_BRACE
   static Token endingTokens[]    = { '(', '<', '[', ',', '{', '.', OP, 0 };
-  
+
   bool endingToken( Token token  ) {
     return contains(endingTokens,token);
   }
@@ -548,7 +548,7 @@ static void savedPush( YY_EXTRA_TYPE extra, Token token, YYLTYPE* loc ) {
   extra->savedTop++;
   extra->savedToken[extra->savedTop] = token;
   extra->savedLoc[extra->savedTop] = *loc;
-  // fprintf(stderr, "save token (%d,%d): %c (0x%04x) (new top: %d)\n", loc->first_line, loc->first_column, token, token, extra->savedTop );  
+  // fprintf(stderr, "save token (%d,%d): %c (0x%04x) (new top: %d)\n", loc->first_line, loc->first_column, token, token, extra->savedTop );
 }
 
 static void savedPop( YY_EXTRA_TYPE extra, Token* token, YYLTYPE* loc ) {
@@ -647,7 +647,7 @@ Token mylex( YYSTYPE* lval, YYLTYPE* loc, yyscan_t scanner)
 
     // Do layout ?
     if (!yyextra->noLayout)
-    {      
+    {
       bool newline = (yyextra->previousLoc.last_line < loc->first_line);
 
 #ifdef INDENT_LAYOUT
@@ -703,13 +703,13 @@ Token mylex( YYSTYPE* lval, YYLTYPE* loc, yyscan_t scanner)
 
           // save the currently scanned token
           savedPush(yyextra, token, loc);
-          
+
           // and replace it by a closing brace
           *loc = yyextra->previousLoc;
           loc->first_line = loc->last_line;
           loc->first_column = loc->last_column;
           loc->last_column++;
-          token = '}';  
+          token = '}';
         }
         #endif
       }
@@ -732,7 +732,7 @@ Token mylex( YYSTYPE* lval, YYLTYPE* loc, yyscan_t scanner)
       }
 
       // insert open brace?
-      else if (newline && loc->first_column > layoutColumn && 
+      else if (newline && loc->first_column > layoutColumn &&
                !endingToken(yyextra->previous) && !continuationToken(token))
       {
         // fprintf(stderr,"insert { before: %c (0x%04x), top: %d\n", token, token, yyextra->savedTop);
@@ -761,7 +761,7 @@ Token mylex( YYSTYPE* lval, YYLTYPE* loc, yyscan_t scanner)
         loc->last_column++;
         token = INSERTED_SEMI;
       }
-#endif      
+#endif
     } // do layout?
   } // not inserted semi
 
