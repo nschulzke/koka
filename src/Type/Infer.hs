@@ -75,6 +75,7 @@ import Core.BindingGroups( regroup )
 
 import qualified Syntax.RangeMap as RM
 import Common.File (seqqList)
+import Type.Operations (hasOptionalOrImplicits)
 
 
 {--------------------------------------------------------------------------
@@ -1985,9 +1986,10 @@ inferArgsN ctx range parArgs
     inferArgExpr tp argexpr hidden -- TODO: add context for better error messages for implicit parameters?
       = (if hidden then withNoRangeInfo else id) $
         allowReturn False $
-        inferExpr (Just (tp,getRange argexpr))
-          (if isRho tp then Instantiated else Generalized False)
-          argexpr
+        do -- traceDoc (\penv -> text "inferArgExpr: expected" <+> ppType penv tp)
+           etaArg <- etaExpandVarArg tp argexpr
+           inferExpr (Just (tp,getRange argexpr)) (if isRho tp then Instantiated else Generalized False) etaArg
+
 
     inferArg !acc []
       = return (reverse acc)
@@ -2032,6 +2034,31 @@ inferArgsN ctx range parArgs
 
            inferArg ((eff,core) : acc) args
 
+
+-- Possibly eta-expand an (variable) argument to resolve any optional and implicit parameters
+etaExpandVarArg :: Type -> Expr Type -> Inf (Expr Type)
+etaExpandVarArg tp argexpr
+  = case (argexpr,splitFunType tp) of -- not for polymorphic types (e.g. `type/hr1.kk`)
+      (Var name _ vrng, Just (parTps,_,resTp)) | not (hasOptionalOrImplicits parTps)
+        -> do -- variable argument with an expected function type without optional parameters
+              matches <- lookupNameCtx isInfoValFunExt name (CtxFunArgs True {-not partial-} (length parTps) [] (Just resTp)) vrng
+              case matches of
+                [(qname,info)]
+                  -> do let vtp = infoType info
+                        -- traceDoc $ \penv -> text "inferArgExpr: try eta-expanded:" <+> ppParam penv (qname,vtp)
+                        case splitFunScheme vtp of
+                          Just (_,_,vparTps,_,_)  | hasOptionalOrImplicits vparTps
+                                                     && all isMonoType (map snd parTps) -- cannot abstract over polymorphic parameters
+                            -> -- the variable has a type with optional parameters, eta-expand it to match the expected type without optional parameters
+                               do let range        = getRange argexpr
+                                      nameFixed    = [makeHiddenName "arg" (newName ("x" ++ show i)) | (i,_) <- zip [1..] parTps]
+                                      argsFixed    = [(Nothing,Var name False range) | name <- nameFixed]
+                                      body         = App argexpr argsFixed range
+                                      eta          = Lam [ValueBinder name Nothing Nothing range range | name <- nameFixed] body range
+                                  return eta
+                          _ -> return argexpr
+                _ -> return argexpr
+      _ -> return argexpr
 
 -- | Is an expression annotated?
 isAnnot (Parens expr _ _ rng) = isAnnot expr

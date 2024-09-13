@@ -16,6 +16,7 @@ module Type.Operations( instantiate
                       , Evidence(..)
                       , freshSub
                       , isOptionalOrImplicit, splitOptionalImplicit, requiresImplicits
+                      , hasOptionalOrImplicits
                       ) where
 
 
@@ -43,6 +44,10 @@ splitOptionalImplicit pars
   = let (fixed,rest) = span (not . isOptionalOrImplicit) pars
         (opts,named) = span (isOptional . snd) rest
     in (fixed,opts,named)
+
+hasOptionalOrImplicits :: [(Name,Type)] -> Bool
+hasOptionalOrImplicits pars
+  = any isOptionalOrImplicit pars
 
 --------------------------------------------------------------------------
 -- Instantiation

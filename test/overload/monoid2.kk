@@ -16,7 +16,7 @@ val intmul/monoid  = Monoid(1,(*))
 val float/monoid   = Monoid(0.0,(+))
 
 fun msum( xs, ?monoid )
-  xs.foldl(zero(),fn(x,y) plus(x,y))
+  xs.foldl(zero(),plus) // fn(x,y) plus(x,y))
   // note1: zero is a function now..
   // note2: we need to eta expand `plus` to match the type `(a,a,?monoid:monoid<a>) -> a` to `(a,a) -> a`
   // maybe we can do this kind of conversion automatically in the compiler?

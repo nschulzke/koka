@@ -24,7 +24,7 @@ module Type.Type (-- * Types
                   -- ** Accessors
                   , maxSynonymRank
                   , synonymRank, typeVarId, typeConName, typeSynName
-                  , isBound, isSkolem, isMeta
+                  , isBound, isSkolem, isMeta, isMonoType
                   -- ** Operations
                   , makeScheme
                   , quantifyType, qualifyType, applyType, tForall
@@ -273,6 +273,12 @@ isSkolem tv = typevarFlavour tv == Skolem
 predType :: Pred -> Type
 predType (PredSub t1 t2)      = typeFun [(newName "sub",t1)] typeTotal t2
 predType (PredIFace name tps) = typeUnit --todo "Type.Operations.predType.PredIFace"
+
+isMonoType :: Type -> Bool
+isMonoType tp
+  = case expandSyn tp of
+      TForall{} -> False
+      _         -> True
 
 
 {--------------------------------------------------------------------------
