@@ -92,7 +92,8 @@ codeGen term flags sequential newtypes borrowed kgamma gamma entry imported mod
          do termTrace term "generate core"
             let outCore  = outBase ++ ".kkc"
             writeDocW 10000 outCore coreDoc  -- just for debugging
-       when (showFinalCore flags && not (isTargetC (target flags))) $
+
+       when (showCore flags || (showFinalCore flags && not (isTargetC (target flags)))) $
          do termInfo term coreDoc
 
        -- write documentation
