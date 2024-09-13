@@ -110,7 +110,7 @@ detect_osarch() {
   OSARCH="$OSNAME-$arch"
 
   if [ "$OSNAME" = "linux" ]; then
-    distrocfg=`cat /etc/*-release`
+    distrocfg=`cat $(find /etc/*-release -type f)`
     if contains "$distrocfg" "rhel"; then
       OSDISTRO="rhel"
     elif contains "$distrocfg" "opensuse"; then
