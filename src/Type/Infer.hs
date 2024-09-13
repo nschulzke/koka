@@ -2055,6 +2055,7 @@ etaExpandVarArg tp argexpr
                                       argsFixed    = [(Nothing,Var name False range) | name <- nameFixed]
                                       body         = App argexpr argsFixed range
                                       eta          = Lam [ValueBinder name Nothing Nothing range range | name <- nameFixed] body range
+                                  -- addRangeInfo vrng (RM.Implicits (\shorten -> text "fn(_,_) var")) -- todo: show the eta-expansion as inlay in vscode?
                                   return eta
                           _ -> return argexpr
                 _ -> return argexpr
