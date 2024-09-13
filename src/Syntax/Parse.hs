@@ -2225,7 +2225,7 @@ injectExpr
 injectType :: LexParser (Range, UserExpr -> UserExpr)
 injectType
  = do rng1 <- keywordInject
-      behind <- do { specialId "behind" <|> specialId "other"; return True } <|> return False
+      behind <- do { specialId "behind"; return True } <|> return False
       langle
       tp   <- ptype
       rng2 <- rangle

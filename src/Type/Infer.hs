@@ -997,15 +997,17 @@ inferExpr propagated expect (Inject label expr behind rng)
        (exprTp,exprEff,exprCore) <- inferExpr prop Instantiated expr
 
        res <- Op.freshTVar kindStar Meta
-       inferUnify (checkInject rng) rng (tfun res) exprTp
+       let fullRng = combineRanges [rng,getRange expr]
+       inferUnify (checkInject fullRng) (getRange expr) (tfun res) exprTp
+       inferUnify (checkInject fullRng) (getRange expr) eff exprEff
        resTp <- subst res
 
-       -- traceDoc $ \penv -> text "infer inject :" <+> ppType penv label
+       traceDoc $ \penv -> text "infer inject :" <+> ppType penv label
        (mbHandled,effName) <- effectNameCore label rng
        effTo <- subst $ effectExtend label eff
 
        sexprTp <- subst exprTp
-       -- traceDoc $ \env -> text "inject: effTo:" <+> ppType env effTo <+> text "," <+> ppType env exprEff <+> text ", exprTp: " <+> ppType env sexprTp
+       traceDoc $ \env -> text "inject: effTo:" <+> ppType env effTo <+> text "," <+> ppType env exprEff <+> text ", exprTp: " <+> ppType env sexprTp
        let coreLevel  = if behind then Core.exprTrue else Core.exprFalse -- Core.Lit (Core.LitInt (if behind then 1 else 0))
        core <- case mbHandled of
                  -- general handled effects use "@inject-effect"
