@@ -45,6 +45,8 @@ fun build()
   val parser = (outdir / "koka-parser").string
   println("created: " ++ parser)
   println("run as : " ++ parser ++ " lib/std/core.kk" )
+  println("or in a bash shell: for f in lib/std/core/*.kk; do " ++ parser ++ " $f; done")
+  println("pass '-v' for verbose output")
 
 
 fun run-echo(cmd : string) : io ()

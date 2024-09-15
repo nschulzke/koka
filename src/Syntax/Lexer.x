@@ -302,28 +302,23 @@ specialNames
 reservedNames :: Set.Set String
 reservedNames
   = Set.fromList $
-    [ "infix", "infixr", "infixl", "prefix", "postfix"
-    , "type", "alias"
-    , "struct", "enum", "con"
-    , "val", "fun", "fn", "extern", "var"
-    , "ctl", "final", "raw"
-    , "if", "then", "else", "elif"
-    , "return", "match", "with", "in"
-    , "ctx", "hole"
-    , "forall", "exists", "some"
-    , "pub", "abstract"
+    [ "infix", "infixr", "infixl"
     , "module", "import", "as"
-
-    -- effect handlers
-    , "handler", "handle"
-    , "effect", "receffect"
-    , "named"
-    , "mask"
-    , "override"
+    , "pub", "abstract"
+    , "type", "alias", "effect", "struct", "con"
+    , "forall", "exists", "some"
+    , "fun", "fn", "val", "var", "extern"
+    , "if", "then", "else", "elif"
+    , "match", "return", "with", "in"
+    , "handle", "handler", "mask"
+    , "ctl", "final", "raw"
+    , "override", "named"
+    , "ctx", "hole"
 
     -- deprecated
     , "private", "public"  -- use pub
     , "rawctl", "brk"      -- use raw ctl, and final ctl
+    , "prefix", "postfix"
 
     -- alternative names for backwards paper compatability
     , "control", "rcontrol", "except"
@@ -336,6 +331,8 @@ reservedNames
     -- future reserved
     , "interface"
     , "unsafe"
+    , "break"
+    , "continue"
 
     -- operators
     , "="

@@ -32,18 +32,21 @@ typedef void* yyscan_t;
 #include <stdio.h>
 #define yylex        mylex
 
-void yyerror(YYLTYPE* loc, yyscan_t scanner, char* s, ...);
-int  mylex( YYSTYPE* val, YYLTYPE* loc, yyscan_t scanner );
 
 typedef int bool;
 #define true (1==1)
 #define false (!true)
 
-void printDecl( const char* sort, const char* name );
+void yyerror(YYLTYPE* loc, yyscan_t scanner, char* s, ...);
+int  mylex( YYSTYPE* val, YYLTYPE* loc, yyscan_t scanner );
+bool verbose(yyscan_t scanner);
+
+#define printDecl(sort,name) printDeclEx(sort,name,verbose(scanner))
+void printDeclEx( const char* sort, const char* name, bool verbose );
 %}
 
 
-%token <Id>     ID CONID OP IDOP QID  QCONID QIDOP WILDCARD '(' ')' '[' ']'
+%token <Id>     ID CONID OP IDOP QID  QCONID QIDOP WILDCARDID IMPLICITID '(' ')' '[' ']'
 %token <Int>    INT
 %token <Float>  FLOAT
 %token <String> STRING
@@ -70,7 +73,7 @@ void printDecl( const char* sort, const char* name );
 %token LEX_WHITE LEX_COMMENT
 %token INSERTED_SEMI EXPR_SEMI
 %token LE ASSIGN DCOLON EXTEND
-%token RETURN CTX HOLE
+%token RETURN CTX
 
 %token HANDLER HANDLE NAMED MASK OVERRIDE
 %token CTL FINAL RAW
@@ -352,8 +355,8 @@ operation   : pub VAL identifier typeparams ':' tatomic
 /* ---------------------------------------------------------
 -- Pure (top-level) Declarations
 ----------------------------------------------------------*/
-puredecl    : inlinemod fipmod VAL binder '=' blockexpr      { $$ = $4; }
-            | inlinemod fipmod FUN qidentifier funbody       { $$ = $4; }
+puredecl    : inlinemod VAL binder '=' blockexpr        { $$ = $3; }
+            | inlinemod fipmod FUN qidentifier funbody  { $$ = $4; }
             ;
 
 inlinemod   : ID_INLINE
@@ -361,13 +364,13 @@ inlinemod   : ID_INLINE
             | /* empty */
             ;
 
-fipmod      : tailmod ID_FIP fipalloc
-            | tailmod ID_FBIP fipalloc
-            | tailmod
+fipmod      : tailmod ID_FIP fiplimit
+            | tailmod ID_FBIP fiplimit
+            | tailmod /* empty */
             ;
 
-fipalloc    : '(' INT ')'
-            | '(' WILDCARD ')'
+fiplimit    : '(' INT ')'
+            | '(' '_' ')'
             | /* empty */
             ;
 
@@ -514,12 +517,13 @@ atom        : name
             | mask
             | '(' aexprs ')'             /* unit, parenthesized (possibly annotated) expression, tuple expression */
             | '[' cexprs ']'             /* list expression (elements may be terminated with comma instead of separated) */
+            | ctxexpr                    /* ctx is an atom and not an expr so we can write `acc ++ ctx Cons(1,_)` */
             | ctxhole
-            | ctxexpr
             ;
 
 name        : qidentifier
             | qconstructor
+            | qimplicit
             ;
 
 literal     : INT | FLOAT | CHAR | STRING
@@ -535,8 +539,7 @@ behind      : ID_BEHIND
 ctxexpr     : CTX atom                    /* should contain a hole */
             ;
 
-ctxhole     : HOLE
-            | WILDCARD
+ctxhole     : '_'
             ;
 
 /* arguments: separated by comma */
@@ -551,7 +554,8 @@ arguments1  : arguments1 ',' argument
             ;
 
 argument    : expr
-            | qidentifier '=' expr                 /* named arguments */
+            | identifier '=' expr                 /* named arguments */
+            | qimplicit '=' expr
             ;
 
 /* parameters: separated by comma, must have a type */
@@ -569,7 +573,7 @@ parameter   : borrow paramid ':' type
             ;
 
 paramid     : identifier
-            | WILDCARD
+            | wildcard
             ;
 
 borrow      : '^'
@@ -590,11 +594,8 @@ pparameter  : borrow pattern
             | borrow pattern ':' type
             | borrow pattern ':' type '=' expr
             | borrow pattern '=' expr
-            | borrow implicit
-            | borrow implicit ':' type
-            ;
-
-implicit    : QID | QIDOP         /* todo: use a special id category? */
+            | borrow qimplicit
+            | borrow qimplicit ':' type
             ;
 
 /* annotated expressions: separated or terminated by comma */
@@ -638,6 +639,13 @@ qidentifier : qvarid
 
 identifier  : varid
             | IDOP
+            ;
+
+wildcard    : WILDCARDID
+            | '_'
+            ;
+
+qimplicit   : IMPLICITID
             ;
 
 qvarid      : QID
@@ -723,7 +731,7 @@ pattern     : identifier
             | '(' apatterns ')'                  /* unit, parenthesized, and tuple pattern */
             | '[' apatterns ']'                  /* list pattern */
             | literal
-            | WILDCARD
+            | wildcard
             ;
 
 patargs     : patargs1
@@ -881,7 +889,7 @@ typeapp     : typecon
             ;
 
 typecon     : varid | qvarid                 /* type name */
-            | WILDCARD                       /* wildcard type variable */
+            | wildcard                       /* wildcard type variable */
             | '(' commas1 ')'                /* tuple constructor */
             | '[' ']'                        /* list constructor */
             | '(' RARROW ')'                 /* function constructor */
@@ -935,7 +943,9 @@ katom       : conid
 
 %%
 
-void printDecl( const char* sort, const char* name )
+void printDeclEx( const char* sort, const char* name, bool verbose )
 {
-  printf( "parsed %s declaration: %s\n", sort, name );
+  if (verbose) {
+    printf( "parsed %s declaration: %s\n", sort, name );
+  }
 }

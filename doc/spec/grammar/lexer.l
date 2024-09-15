@@ -92,7 +92,7 @@ Id              \@?{Lower}{IdChar}*{Final}*
 IdChar          {Letter}|{Digit}|[_\-]
 
 ModulePart      {Id}\/
-ModulePath      {ModulePart}+(\#{ModulePart}*)?|\?{ModulePart}*
+ModulePath      {ModulePart}+(\#{ModulePart}*)?
 
 HexEsc          x{Hex}{Hex}|u{Hex}{Hex}{Hex}{Hex}|U{Hex}{Hex}{Hex}{Hex}{Hex}{Hex}
 CharEsc         [nrt\\\"\']
@@ -172,7 +172,6 @@ in                        { return IN; }
 match                     { return MATCH;}
 return                    { return RETURN;}
 ctx                       { return CTX; }
-hole                      { return HOLE; }
 
 module                    { return MODULE;}
 import                    { return IMPORT;}
@@ -277,11 +276,15 @@ c                         { return ID_C;       }
 {ModulePath}{Id}             { yylval->Id = identifier(yytext,yyscanner,true); return QID; }
 {ModulePath}\({Symbols}\)    { yylval->Id = identifier(yytext,yyscanner,true); return QIDOP; }
 
+\?{ModulePart}*{Id}          { yylval->Id = identifier(yytext,yyscanner,true); return IMPLICITID; }
+\?{ModulePart}*\({Symbols}\) { yylval->Id = identifier(yytext,yyscanner,true); return IMPLICITID; }
+
 {ConId}                   { yylval->Id = identifier(yytext,yyscanner,true); return CONID; }
 {Id}                      { yylval->Id = identifier(yytext,yyscanner,true); return ID; }
 \({Symbols}\)             { yylval->Id = identifier(yytext,yyscanner,false); return IDOP; }
 {Symbols}                 { yylval->Id = identifier(yytext,yyscanner,false); return OP; }
-_{IdChar}*                { yylval->Id = identifier(yytext,yyscanner,true); return WILDCARD; }
+_                         { return '_'; }
+_{IdChar}+                { yylval->Id = identifier(yytext,yyscanner,true); return WILDCARDID; }
 
   /* Character literals */
 \'{GraphicChar}\'         { yylval->Char = yytext[1]; return CHAR; }
@@ -1430,4 +1433,9 @@ void alistFree( allocList* list )
     free(head);
     head = next;
   }
+}
+
+bool verbose(yyscan_t scanner) {
+  EnableMacros(scanner);
+  return yyextra->verbose;
 }
