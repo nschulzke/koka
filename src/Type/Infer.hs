@@ -501,9 +501,12 @@ inferBindDef def@(Def (ValueBinder name () expr nameRng vrng) rng vis sort inl d
     do withDefName name $ disallowHole $
         do (tp,eff,coreExpr) <- inferExpr Nothing Instantiated expr
            stp <- subst tp
+           seff <- subst eff
+           -- awhen (not (isRho stp)) $
+           --  inferUnify (checkValue rng) nameRng typeTotal eff
                                 --  Just annTp -> inferExpr (Just (annTp,rng)) Instantiated (Ann expr annTp rng)
            coreDef <- if (sort /= DefVar)
-                       then return (Core.Def name tp coreExpr vis sort inl nameRng doc)
+                       then return (Core.Def name stp coreExpr vis sort inl nameRng doc)
                        else do hp <- Op.freshTVar kindHeap Meta
                                (qrefName,_,info) <- resolveName nameRef Nothing rng
                                let refTp  = typeApp typeRef [hp,tp]
@@ -517,8 +520,7 @@ inferBindDef def@(Def (ValueBinder name () expr nameRng vrng) rng vis sort inl d
                  in addRangeInfo nameRng (RM.Id name (RM.NIValue sort (Core.defType coreDef) doc (isAnnot expr)) [] True)
             else if (isTypeUnit (Core.typeOf coreDef))
              then return ()
-             else do seff <- subst eff
-                     -- traceDoc $ \env -> text "wildcard definition:" <+> pretty name <.> colon <+> niceType env seff
+             else do -- traceDoc $ \env -> text "wildcard definition:" <+> pretty name <.> colon <+> niceType env seff
                      let (ls,tl) = extractEffectExtend seff
                      case (ls,tl) of
                        ([],tl) | isTypeTotal tl -> unusedWarning rng
@@ -527,7 +529,7 @@ inferBindDef def@(Def (ValueBinder name () expr nameRng vrng) rng vis sort inl d
                                if (not occ) then unusedWarning rng else return ()
                                -- return ()
                        _ -> return ()
-           return (eff,coreDef)
+           return (seff,coreDef)
 
 
 checkValue        = Check "Values cannot have an effect"
@@ -809,14 +811,17 @@ inferExpr propagated expect (Ann expr annTp0 rng)
        (tp,eff,core) <- inferExpr (Just (annTp,rangeHide rng)) (if isRho annTp then Instantiated else Generalized False) expr
        sannTp <- subst annTp
        stp    <- subst tp
-       -- traceDoc $ \env -> text "  subsume annotation:" <+> ppType env sannTp <+> text " to: " <+> ppType env stp
+       seff   <- subst eff
+       -- traceDoc $ \env -> text "  subsume annotation:" <+> ppType env sannTp <+> text " to: " <+> ppType env stp <+> text ", in effect: " <+> ppType env seff
        (resTp0,coref) <- -- withGammaType rng sannTp $
-                          inferSubsume (checkAnn rng) (getRange expr) sannTp tp
-       -- (resTp,resCore) <- maybeInstantiateOrGeneralize expect annTp (coref core)
-       -- return (resTp,eff,resCore)
-       resTp  <- subst resTp0
+                         inferSubsume (checkAnn rng) (getRange expr) sannTp stp
+       let resCore1 = coref core
+           resTp1   = resTp0
+       -- (resTp1,resCore1) <- maybeInstantiateOrGeneralize rng (getRange expr) eff expect annTp (coref core)
+
+       resTp  <- subst resTp1
        resEff <- subst eff
-       resCore <- subst (coref core)
+       resCore <- subst resCore1
        -- traceDoc $ \env -> text "  subsumed to:" <+> ppType env resTp
        return (resTp,resEff,resCore)
 
