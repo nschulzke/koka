@@ -662,8 +662,8 @@ nofailUnify u
 withSkolemized :: Range -> Type -> Maybe Doc -> (Type -> [TypeVar] -> Inf (a,Tvs)) -> Inf a
 withSkolemized rng tp mhint action
   = do (xvars,_,xrho,_) <- Op.skolemizeEx rng tp
-       (x,extraFree) <- trace ("withSkolemized: " ++ show xvars ) $
-                         action xrho xvars
+       (x,extraFree)    <- -- trace ("withSkolemized: " ++ show xvars ) $
+                           action xrho xvars
        checkSkolemEscape rng xrho mhint xvars extraFree
        return x
        {-

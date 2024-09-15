@@ -62,7 +62,7 @@ void printDecl( const char* sort, const char* name );
 %token ALIAS CON
 %token FORALL EXISTS SOME
 
-%token IMPORT AS MODULE
+%token IMPORT IMPORT_EXTERN AS MODULE
 %token PUB ABSTRACT
 %token EXTERN
 %token INFIX INFIXL INFIXR
@@ -70,7 +70,7 @@ void printDecl( const char* sort, const char* name );
 %token LEX_WHITE LEX_COMMENT
 %token INSERTED_SEMI EXPR_SEMI
 %token LE ASSIGN DCOLON EXTEND
-%token RETURN
+%token RETURN CTX HOLE
 
 %token HANDLER HANDLE NAMED MASK OVERRIDE
 %token CTL FINAL RAW
@@ -83,10 +83,11 @@ void printDecl( const char* sort, const char* name );
 %token ID_BEHIND
 %token ID_VALUE ID_REFERENCE ID_SCOPED
 %token ID_INITIALLY ID_FINALLY
+%token ID_FIP ID_FBIP ID_TAIL
 
 %type <Id>  varid conid qvarid qconid op
 %type <Id>  identifier qidentifier qoperator qconstructor
-%type <Id>  funid typeid modulepath binder
+%type <Id>  typeid modulepath binder
 %type <Id>  fundecl aliasdecl typedecl externdecl puredecl
 
 /* precedence declarations are in increasing order,
@@ -118,11 +119,15 @@ program     : semis MODULE modulepath moduledecl  { printDecl("module",$3); }
             | moduledecl                          { printDecl("module","main"); }
             ;
 
-moduledecl  : '{' semis modulebody '}' semis
-            | semis modulebody
+moduledecl  : '{' semis imports '}' semis
+            | semis imports
             ;
 
-modulebody  : importdecl semis1 modulebody
+imports     : importdecl semis1 imports
+            | eimports
+            ;
+
+eimports    : IMPORT_EXTERN externimpbody semis1 eimports
             | declarations
             ;
 
@@ -195,10 +200,8 @@ topdecl     : pub puredecl                             { printDecl("value",$2); 
 -- External declarations
 ----------------------------------------------------------*/
 
-externdecl  : ID_INLINE   EXTERN funid externtype externbody   { $$ = $3; }
-            | ID_NOINLINE EXTERN funid externtype externbody   { $$ = $3; }
-            | EXTERN funid externtype externbody               { $$ = $2; }
-            | EXTERN IMPORT externimpbody                      { $$ = "<extern import>"; }
+externdecl  : inlinemod fipmod EXTERN qidentifier externtype externbody   { $$ = $4; }
+            /* | IMPORT EXTERN externimpbody                                 { $$ = "<extern import>"; } */
             ;
 
 externtype  : ':' typescheme
@@ -291,6 +294,7 @@ typeid      : '(' commas ')'      { $$ = "(,)"; }       /* tuples */
             | '<' '>'             { $$ = "<>"; }        /* total effect */
             | '<' '|' '>'         { $$ = "<|>"; }       /* effect extension */
             | varid               { $$ = $1; }
+            | CTX                 { $$ = "ctx"; }
             ;
 
 commas      : commas1
@@ -340,16 +344,16 @@ operations  : operations operation semis1
             ;
 
 operation   : pub VAL identifier typeparams ':' tatomic
-            | pub FUN identifier typeparams '(' parameters ')' ':' tatomic
-            | pub CTL identifier typeparams '(' parameters ')' ':' tatomic
+            | pub FUN identifier typeparams '(' pparameters ')' ':' tatomic
+            | pub controlmod CTL identifier typeparams '(' pparameters ')' ':' tatomic
             ;
 
 
 /* ---------------------------------------------------------
 -- Pure (top-level) Declarations
 ----------------------------------------------------------*/
-puredecl    : inlinemod VAL binder '=' blockexpr      { $$ = $3; }
-            | inlinemod FUN funid funbody             { $$ = $3; }
+puredecl    : inlinemod fipmod VAL binder '=' blockexpr      { $$ = $4; }
+            | inlinemod fipmod FUN qidentifier funbody       { $$ = $4; }
             ;
 
 inlinemod   : ID_INLINE
@@ -357,16 +361,25 @@ inlinemod   : ID_INLINE
             | /* empty */
             ;
 
-fundecl     : funid funbody                { $$ = $1; }
+fipmod      : tailmod ID_FIP fipalloc
+            | tailmod ID_FBIP fipalloc
+            | tailmod
+            ;
+
+fipalloc    : '(' INT ')'
+            | '(' WILDCARD ')'
+            | /* empty */
+            ;
+
+tailmod     : ID_TAIL
+            | /* empty */
+            ;
+
+fundecl     : identifier funbody            { $$ = $1; }
             ;
 
 binder      : identifier                    { $$ = $1; }
             | identifier ':' type           { $$ = $1; }
-            ;
-
-funid       : identifier         { $$ = $1; }
-            | '[' commas ']'     { $$ = "[]"; }
-            | STRING             { $$ = $1; }
             ;
 
 funbody     : typeparams '(' pparameters ')' bodyexpr
@@ -466,7 +479,8 @@ prefixexpr  : '!' prefixexpr
 
 appexpr     : appexpr '(' arguments ')'             /* application */
             | appexpr '[' arguments ']'             /* index expression */
-            | appexpr '.' atom                      /* dot application */
+            | appexpr '.' name                      /* dot application */
+            | appexpr '.' '(' arguments ')'         /* dot application */
             | appexpr block                         /* trailing function application */
             | appexpr fnexpr                        /* trailing function application */
             | atom
@@ -488,18 +502,24 @@ ntlprefixexpr: '!' ntlprefixexpr
 
 ntlappexpr  : ntlappexpr '(' arguments ')'             /* application */
             | ntlappexpr '[' arguments ']'             /* index expression */
-            | ntlappexpr '.' atom                      /* dot application */
+            | ntlappexpr '.' name                      /* dot application */
+            | ntlappexpr '.' '(' arguments ')'         /* dot application */
             | atom
             ;
 
 /* atomic expressions */
 
-atom        : qidentifier
-            | qconstructor
+atom        : name
             | literal
             | mask
             | '(' aexprs ')'             /* unit, parenthesized (possibly annotated) expression, tuple expression */
             | '[' cexprs ']'             /* list expression (elements may be terminated with comma instead of separated) */
+            | ctxhole
+            | ctxexpr
+            ;
+
+name        : qidentifier
+            | qconstructor
             ;
 
 literal     : INT | FLOAT | CHAR | STRING
@@ -510,6 +530,13 @@ mask        : MASK behind '<' tbasic '>'
 
 behind      : ID_BEHIND
             | /* empty */
+            ;
+
+ctxexpr     : CTX atom                    /* should contain a hole */
+            ;
+
+ctxhole     : HOLE
+            | WILDCARD
             ;
 
 /* arguments: separated by comma */
@@ -524,7 +551,7 @@ arguments1  : arguments1 ',' argument
             ;
 
 argument    : expr
-            | identifier '=' expr                  /* named arguments */
+            | qidentifier '=' expr                 /* named arguments */
             ;
 
 /* parameters: separated by comma, must have a type */
@@ -563,8 +590,12 @@ pparameter  : borrow pattern
             | borrow pattern ':' type
             | borrow pattern ':' type '=' expr
             | borrow pattern '=' expr
+            | borrow implicit
+            | borrow implicit ':' type
             ;
 
+implicit    : QID | QIDOP         /* todo: use a special id category? */
+            ;
 
 /* annotated expressions: separated or terminated by comma */
 
@@ -630,6 +661,9 @@ varid       : ID
             | ID_FINALLY      { $$ = "finally"; }
             | ID_DIV          { $$ = "div"; }
             | ID_CO           { $$ = "co"; }
+            | ID_FIP          { $$ = "fip"; }
+            | ID_FBIP         { $$ = "fbip"; }
+            | ID_TAIL         { $$ = "tail"; }
             /* | ID_NAMED        { $$ = "named"; } */
             ;
 
@@ -851,6 +885,7 @@ typecon     : varid | qvarid                 /* type name */
             | '(' commas1 ')'                /* tuple constructor */
             | '[' ']'                        /* list constructor */
             | '(' RARROW ')'                 /* function constructor */
+            | CTX
             ;
 
 

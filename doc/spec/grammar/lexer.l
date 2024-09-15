@@ -81,14 +81,18 @@ char escapeToChar( char esc, yyscan_t scanner )
   /* Character classes */
 
 Symbols         {Symbol}+|[/]
-Symbol          [\$\%\&\*\+\@!\\\^\~=\.\-\:\?\|\<\>]
+Symbol          [\$\%\&\*\+\~!\\\^\#\=\.\:\-\|\<\>]
 AngleBar        [\<\>\|]
 Angle           [\<\>]
 Sign            [\-]?
 
-ConId           {Upper}{IdChar}*{Final}*
-Id              {Lower}{IdChar}*{Final}*
+/* note: @ is only allowed in definitions */
+ConId           \@?{Upper}{IdChar}*{Final}*
+Id              \@?{Lower}{IdChar}*{Final}*
 IdChar          {Letter}|{Digit}|[_\-]
+
+ModulePart      {Id}\/
+ModulePath      {ModulePart}+(\#{ModulePart}*)?|\?{ModulePart}*
 
 HexEsc          x{Hex}{Hex}|u{Hex}{Hex}{Hex}{Hex}|U{Hex}{Hex}{Hex}{Hex}{Hex}{Hex}
 CharEsc         [nrt\\\"\']
@@ -167,6 +171,8 @@ with                      { return WITH; }
 in                        { return IN; }
 match                     { return MATCH;}
 return                    { return RETURN;}
+ctx                       { return CTX; }
+hole                      { return HOLE; }
 
 module                    { return MODULE;}
 import                    { return IMPORT;}
@@ -196,6 +202,13 @@ scoped                    { return ID_SCOPED; }
 behind                    { return ID_BEHIND; }
 initially                 { return ID_INITIALLY; }
 finally                   { return ID_FINALLY; }
+
+fip                       { return ID_FIP; }
+fbip                      { return ID_FBIP; }
+tail                      { return ID_TAIL; }
+
+import{Space}+extern      { return IMPORT_EXTERN; }
+extern{Space}+import      { return IMPORT_EXTERN; } /* deprecated */
 
   /* unused reserved identifiers */
 interface                 { return IFACE; }
@@ -260,9 +273,9 @@ c                         { return ID_C;       }
 
 
   /* Identifiers and operators */
-({Id}\/)+{ConId}          { yylval->Id = identifier(yytext,yyscanner,true); return QCONID; }
-({Id}\/)+{Id}             { yylval->Id = identifier(yytext,yyscanner,true); return QID; }
-({Id}\/)+\({Symbols}\)    { yylval->Id = identifier(yytext,yyscanner,true); return QIDOP; }
+{ModulePath}{ConId}          { yylval->Id = identifier(yytext,yyscanner,true); return QCONID; }
+{ModulePath}{Id}             { yylval->Id = identifier(yytext,yyscanner,true); return QID; }
+{ModulePath}\({Symbols}\)    { yylval->Id = identifier(yytext,yyscanner,true); return QIDOP; }
 
 {ConId}                   { yylval->Id = identifier(yytext,yyscanner,true); return CONID; }
 {Id}                      { yylval->Id = identifier(yytext,yyscanner,true); return ID; }
@@ -969,7 +982,7 @@ bool isDigit(char c) {
   return (c>='0' && c <= '9');
 }
 
-bool wellformed( const char* s ) {
+bool wellformed( const char* s) {
   char prev = '\0';
   char next = '\0';
   const char* c;
@@ -985,7 +998,12 @@ bool wellformed( const char* s ) {
 char* identifier( const char* s, yyscan_t scanner, bool wellformedCheck )
 {
   EnableMacros(scanner);
-  if (wellformedCheck && !wellformed(s)) yyerror(yylloc,scanner,"malformed identifier: a dash must be preceded and followed by a letter");
+  if (s[0]=='@' && !(yyextra->previous==FUN || yyextra->previous==EXTERN || yyextra->previous==VAL)) {
+    yyerror(yylloc,scanner,"cannot use '@' identifiers outside of definitions");
+  }
+  if (wellformedCheck && !wellformed(s)) {
+    yyerror(yylloc,scanner,"malformed identifier: a dash must be preceded and followed by a letter");
+  }
   return stringDup(s,scanner);
 }
 
@@ -1234,6 +1252,7 @@ int main( int argc, char** argv )
       exit(1);
     }
     else {
+      printf("parsing: %s\n", argv[arg]);
       yyin = fopen(argv[arg], "r");
       if (!yyin) {
        fprintf(stderr,"couldn't open file: %s\n", argv[arg]);
@@ -1351,9 +1370,11 @@ void printToken( int token, int state, yyscan_t scanner )
   fprintf(stderr, "]: ");
   switch(token) {
     case ID:        fprintf(stderr,"ID    = '%s'", yylval->Id); break;
+    case IDOP:      fprintf(stderr,"IDOP  = '%s'", yylval->Id); break;
     case CONID:     fprintf(stderr,"CONID = '%s'", yylval->Id); break;
     case OP:        fprintf(stderr,"OP    = '%s'", yylval->Id); break;
     case QID:       fprintf(stderr,"QID   = '%s'", yylval->Id); break;
+    case QIDOP:     fprintf(stderr,"QIDOP = '%s'", yylval->Id); break;
     case QCONID:    fprintf(stderr,"QCONID= '%s'", yylval->Id); break;
     // case QOP:       fprintf(stderr,"QOP   = '%s'", yylval->Id); break;
     case INT:       fprintf(stderr,"INT   = '%lu'", yylval->Int); break;

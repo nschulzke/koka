@@ -2067,13 +2067,16 @@ appexpr allowTrailingLam
     dotexpr, indexer, applier, funapps :: LexParser (UserExpr -> UserExpr)
     dotexpr
       = do keyword "."
-           e <- atom
-           (do rng0 <- lapp
-               args <- sepBy argument (comma)
-               rng1 <- rparen
-               return (\arg0 -> App e ((Nothing,arg0):args) (combineRanged arg0 rng1))
+           (do e <- idcon
+               (do rng0 <- lapp
+                   args <- sepBy argument (comma)
+                   rng1 <- rparen
+                   return (\arg0 -> App e ((Nothing,arg0):args) (combineRanged arg0 rng1))
+                <|>
+                   return (\arg0 -> App e [(Nothing,arg0)] (combineRanged arg0 e)))
             <|>
-               return (\arg0 -> App e [(Nothing,arg0)] (combineRanged arg0 e)))
+              applier
+            )
 
     indexer
       = do rng0 <- lidx
@@ -2132,8 +2135,7 @@ argument
 --------------------------------------------------------------------------}
 atom :: LexParser UserExpr
 atom
-  = do (name,rng) <- qidentifier <|> qconstructor
-       return $ Var name False rng
+  = do idcon
   <|>
     do tupleExpr -- must be second due to '(' operator ')'
   <|>
@@ -2148,6 +2150,11 @@ atom
   <|>
     do injectExpr
   <?> "(simple) expression"
+
+idcon :: LexParser UserExpr
+idcon
+  = do (name,rng) <- qidentifier <|> qconstructor
+       return $ Var name False rng
 
 literal
   = do (i,rng) <- integer
