@@ -229,7 +229,7 @@ fun process-next( arg : string, flags : list<flag<a>> ) : list<flag-kind<a>>
 
 
 
-fun break( s : string, c : string ) : (string,string)
+fun breakon( s : string, c : string ) : (string,string)
   val parts = s.split(c,2)
   match (parts)
     Cons(x,Cons(y,_)) -> (x,y)
@@ -237,7 +237,7 @@ fun break( s : string, c : string ) : (string,string)
 
 
 fun parse-long( s : string, flags : list<flag<a>> ) : total flag-kind<a>
-  val (cflagname,flagarg) = s.break("=")
+  val (cflagname,flagarg) = s.breakon("=")
   val optstr   = "--" ++ s
   val flagname = cflagname.to-lower
   val (baseflagname,negated) = match (flagname.starts-with("no-"))
