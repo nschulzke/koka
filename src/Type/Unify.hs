@@ -88,17 +88,6 @@ matchNamed matchSome range free tp n {- given args -} named mbExpResTp
        case splitFunType rho1 of
          Nothing
           -> unifyError NoMatch
-          {-
-              do parTps <- mapM (\pname -> do tpar <- freshTVar kindStar Meta
-                                              return (pname,tpar)) (replicate n nameNil ++ named)
-                 resTp <- case mbExpResTp of
-                                  Just rtp -> return rtp
-                                  Nothing  -> freshTVar kindStar Meta
-                 effTp <- freshTVar kindEffect Meta
-                 let funTp = TFun parTps effTp resTp
-                 subsume range free tp funTp
-                 subst funTp
-          -}
          Just (pars,_,resTp)
           -> if (n + length named > length pars)
               then unifyError NoMatch
@@ -126,8 +115,8 @@ matchArguments matchSome range free tp fixed named mbExpResTp
          Nothing -> -- unifyError NoMatch
                     do resTp <- case mbExpResTp of
                                   Just rtp -> return rtp
-                                  Nothing  -> freshTVar kindStar Meta
-                       effTp <- freshTVar kindEffect Meta
+                                  Nothing  -> freshStar
+                       effTp <- freshEffect
                        let funTp = TFun ([(nameNil,tpar) | tpar <- fixed] ++ named)
                                         effTp resTp
                        subsume range free tp funTp
@@ -193,10 +182,11 @@ pureMatchShape tp1 tp2
 -- may be quantified).
 subsume :: HasCallStack => Range -> Tvs -> Type -> Type -> Unify (Type,Rho,[Evidence], Core.Expr -> Core.Expr)
 subsume range free tp1 tp2
-  = -- trace (" subsume: " ++ show (tp1,tp2) ++ ", free: " ++ show (tvsList free)) $
+  = -- trace (" subsume: " ++ show (pretty tp1, pretty tp2) ++ ", free: " ++ show (map pretty (tvsList free))) $
     do -- skolemize,instantiate and unify
        (sks,evs1,rho1,core1) <- skolemizeEx range tp1
        (tvs,evs2,rho2,core2) <- instantiateEx range tp2
+       -- trace ("  subsume: " ++ show (pretty rho1, pretty rho2) ++ ", free: " ++ show (map pretty (tvsList free))) $
        unify rho2 rho1
 
        -- escape check: no skolems should escape into the environment
@@ -355,7 +345,7 @@ unify tp1 tp2
 
 
 -- | Unify a type variable with a type
-unifyTVar :: TypeVar -> Type -> Unify ()
+unifyTVar :: HasCallStack => TypeVar -> Type -> Unify ()
 unifyTVar tv@(TypeVar id kind Meta) tp
   = let etp = expandSyn tp in
     if (tvsMember tv (fuv etp))
@@ -384,7 +374,7 @@ unifyTVar tv tp
 
 
 -- | Unify two equal lenght lists of types, and apply a substitution before each unification
-unifies :: [Type] -> [Type] -> Unify ()
+unifies :: HasCallStack => [Type] -> [Type] -> Unify ()
 unifies [] []
   = return ()
 unifies (t:ts) (u:us)
@@ -397,7 +387,7 @@ unifies _ _
 
 
 -- | Unify predicates (applies a substitution before each unification)
-unifyPreds :: [Pred] -> [Pred] -> Unify ()
+unifyPreds :: HasCallStack => [Pred] -> [Pred] -> Unify ()
 unifyPreds [] []
   = return ()
 unifyPreds (p1:ps1) (p2:ps2)
@@ -409,7 +399,7 @@ unifyPreds _ _
   = failure "Type.Unify.unifyPreds"
 
 
-unifyPred :: Pred -> Pred -> Unify ()
+unifyPred :: HasCallStack => Pred -> Pred -> Unify ()
 unifyPred (PredSub t1 t2) (PredSub u1 u2)
   = do unify t1 u1
        st2 <- subst t2
@@ -422,6 +412,7 @@ unifyPred _ _
 
 
 -- | Unify effects
+unifyEffect :: HasCallStack => Type -> Type -> Unify ()
 unifyEffect tp1 tp2
   = do (ls1,tl1) <- extractNormalizeEffect tp1
        (ls2,tl2) <- extractNormalizeEffect tp2
@@ -431,12 +422,12 @@ unifyEffect tp1 tp2
              -> do -- trace ("unifyEffect: unification of " ++ show (tp1,tp2) ++ " is infinite") $ return ()
                    unifyError Infinite
          _   -> do tail1 <- if null ds1 then return tl1
-                                        else do tv1 <- freshTVar kindEffect Meta
+                                        else do tv1 <- freshEffect
                                                 unify tl1 (effectExtends ds1 tv1)
                                                 return tv1
                    stl2  <- subst tl2
                    tail2 <- if null ds2 then return stl2
-                                        else do tv2 <- freshTVar kindEffect Meta
+                                        else do tv2 <- freshEffect
                                                 unify stl2 (effectExtends ds2 tv2)
                                                 return tv2
                    stail1 <- subst tail1
@@ -453,19 +444,19 @@ extractNormalizeEffect tp
   = do tp' <- subst tp
        return $ extractOrderedEffect tp'
 
-
+unifyEffectVar :: HasCallStack => TypeVar -> Type -> Unify ()
 unifyEffectVar tv1 tp2
   = do let (ls2,tl2) = extractOrderedEffect tp2  -- ls2 must be non-empty
        case expandSyn tl2 of
          TVar tv2 | tv1 == tv2  -- e ~ <div,exn|e>  ~> e := <div,exn|e'>
            -> -- trace ("unifyEffectVar: " ++ show tv1 ++ ":=" ++ show tp2 ++ " is infinite") $
                  unifyError Infinite
-         _ -> do -- tv <- freshTVar kindEffect Meta
+         _ -> do -- tv <- freshEffect
                  unifyTVar tv1 (effectExtends ls2 tl2)
 
 
 -- | Unify lists of ordered labels; return the differences.
-unifyLabels :: [Tau] -> [Tau] -> Bool -> Bool -> Unify ([Tau],[Tau])
+unifyLabels :: HasCallStack => [Tau] -> [Tau] -> Bool -> Bool -> Unify ([Tau],[Tau])
 unifyLabels ls1 ls2 closed1 closed2
   = case (ls1,ls2) of
       ([],[])

@@ -19,6 +19,6 @@ import std/core/delayed = std/core/delayed pub = "";
 import std/core/console = std/core/console pub = "";
 import std/core = std/core = "";
 pub fun test : forall<a> (x : a) -> a
- = fn(x: 10){
+ = fn(x: 14){
  x;
  };

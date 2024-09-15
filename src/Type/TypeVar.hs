@@ -81,7 +81,7 @@ module Type.TypeVar
   )
 where
 
--- import Lib.Trace
+import Lib.Trace
 
 import Common.Failure (HasCallStack, assertion)
 import Common.File (seqList)
@@ -204,26 +204,36 @@ subSingle tvar tau =
     assertion "Type.TypeVar.subSingle.KindMismatch" (getKind tvar == getKind tau)
     $ Sub (M.singleton tvar tau) (tvsInsert tvar (ftv tau))
 
-subLookup :: TypeVar -> Sub -> Maybe Tau
+subLookup :: HasCallStack => TypeVar -> Sub -> Maybe Tau
 subLookup tvar (Sub sub _) =
-  M.lookup tvar sub
+  case M.lookupIndex tvar sub of
+    Nothing  -> Nothing
+    Just i   -> let (keyTvar,tau) = M.elemAt i sub
+                in -- TVars with a different flavour should have different id's
+                   assertion ("Substitute with different flavour: " ++ show tvar ++ " != " ++ show keyTvar)
+                                (typevarFlavour keyTvar == typevarFlavour tvar) $
+                   -- kinds should always match
+                   assertion ("Type.TypeVar.subFind: incompatible kind: "
+                          ++ "\n tvar: " ++ showTVar tvar ++ ":" ++ show (getKind tvar) ++ ","
+                          ++ "\n type: " ++ show tau ++ ":" ++ show (getKind tau))
+                          (getKind tvar == getKind tau) $
+                   Just tau
 
 subRemove :: [TypeVar] -> Sub -> Sub
 subRemove tvars (Sub sub tvs) =
-  Sub (foldr M.delete sub tvars) tvs
+  {-
+  (if any (\tv -> M.member tv sub)  tvars
+    then let subtvs =  filter (\(t,_) -> elem t tvars) (M.toList sub)
+         in trace ("forall " ++ show tvars ++ " overlaps " ++ show subtvs)
+    else id
+  ) $ -}
+  Sub (foldr M.delete sub tvars) (tvsRemove tvars tvs)
 
 subFind :: (HasCallStack) => TypeVar -> Sub -> Tau
 subFind tvar sub =
   case subLookup tvar sub of
-    Nothing -> TVar tvar
-    Just tau ->
-      {-
-      assertion ("Type.TypeVar.subFind: incompatible kind: "
-                ++ "\n tvar: " ++ showTVar tvar ++ ":" ++ show (getKind tvar) ++ ","
-                ++ "\n type: " ++ show tau ++ ":" ++ show (getKind tau))
-                (getKind tvar == getKind tau) $
-      -}
-      tau
+    Nothing  -> TVar tvar
+    Just tau -> tau
 
 showTVar (TypeVar id _ _) =
   show id
@@ -496,14 +506,20 @@ instance (HasOrderedTypeVar a) => HasOrderedTypeVar [a] where
 instance HasTypeVar Type where
   sub `substitute` tp =
     case tp of
+      TForall [] preds tp   ->
+        let preds' = sub |-> preds
+        in seqList preds' $ TForall [] preds' (sub |-> tp)
       TForall vars preds tp ->
         let sub' = subRemove vars sub
-         in if all (\tv -> not (tvsMember tv (subTvs sub'))) vars
-              then
-                let preds' = sub' |-> preds
-                 in seqList preds' $ TForall vars preds' (sub' |-> tp)
+        in -- if True -- all (\tv -> not (tvsMember tv (subTvs sub'))) vars
+           --   then
+           assertion ("forall captures substitution: " ++ show vars ++ " " ++ show (subList sub'))
+                    (all (\tv -> not (tvsMember tv (subTvs sub'))) vars) $
+           let preds' = sub' |-> preds
+           in seqList preds' $ TForall vars preds' (sub' |-> tp)
+           {-
               else
-                let uniq = max (tvsMax (subTvs sub')) (tvsMax (ftv tp)) + 1000
+                let uniq = max (tvsMax (subTvs sub')) (tvsMax (ftv tp)) + 2000
                     tvsub = [(tv, tv {typevarId = typevarId tv + uniq}) | tv <- vars]
                     sksub = subNew [(tv, TVar tvnew) | (tv, tvnew) <- tvsub]
                     preds' = (sub' |-> (sksub |-> preds))
@@ -512,6 +528,7 @@ instance HasTypeVar Type where
                       seqList preds' $
                         TForall newvars preds' $!
                           (sub' |-> (sksub |-> tp))
+           -}
       TFun args effect result ->
         let args' = (map (\(name, tp) -> let tp' = sub `substitute` tp in seq tp' (name, tp')) args)
          in seqList args' $ TFun args' (sub `substitute` effect) (sub `substitute` result)

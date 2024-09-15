@@ -107,7 +107,8 @@ typeCheck flags defs coreImports program0
 
         -- check generated core
         let checkCoreDefs title = when (coreCheck flags) $ Core.Check.checkCore False False penv gamma
-        -- traceDefGroups "initial"
+        when (showInitialCore flags) $
+          traceDefGroups "initial"
 
         -- remove return statements
         unreturn penv
@@ -149,6 +150,15 @@ typeCheck flags defs coreImports program0
 
         return (coreFinal,mbRangeMap)
 
+  where
+    traceDefGroups :: String -> Core.CorePhase () ()
+    traceDefGroups title
+      = do dgs <- Core.getCoreDefs
+           trace (unlines (["","/* -----------------", title, "--------------- */"] ++
+              map showDef (Core.flattenDefGroups dgs))) $ return ()
+      where
+        showDef def = show (Core.Pretty.prettyDef (penv{coreShowDef=True}) def)
+        penv = prettyEnvFromFlags flags
 
 
 
@@ -167,14 +177,4 @@ importMapFromCoreImports progImports cimports
           Just imp -> importName imp
           Nothing  -> modname
 
-
-
-traceDefGroups :: Flags -> String -> Core.CorePhase () ()
-traceDefGroups flags title
-  = do dgs <- Core.getCoreDefs
-       trace (unlines (["","/* -----------------", title, "--------------- */"] ++
-                map showDef (Core.flattenDefGroups dgs))) $ return ()
-  where
-    showDef def = show (Core.Pretty.prettyDef (penv{coreShowDef=True}) def)
-    penv = prettyEnvFromFlags flags
 

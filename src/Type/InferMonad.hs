@@ -132,7 +132,7 @@ trace s x =
 {--------------------------------------------------------------------------
   Generalization
 --------------------------------------------------------------------------}
-generalize :: Range -> Range -> Bool -> Effect -> Rho -> Core.Expr -> Inf (Scheme,Core.Expr )
+generalize :: HasCallStack => Range -> Range -> Bool -> Effect -> Rho -> Core.Expr -> Inf (Scheme,Core.Expr )
 generalize contextRange range close eff  tp@(TForall _ _ _)  core0
   = {-
     trace ("generalize forall: " ++ show tp) $
@@ -156,7 +156,7 @@ generalize contextRange range close eff0 rho0 core0
        free0 <- freeInGamma
        let free = tvsUnion free0 (fuv seff)
        ps0  <- splitPredicates free
-       score0 <- subst core0
+       -- score0 <- subst core0
 
        sub <- getSub
        -- trace ("generalize: " ++ show (pretty seff,pretty srho) ++ " with " ++ show ps0)
@@ -177,7 +177,7 @@ generalize contextRange range close eff0 rho0 core0
                 -- substitute more free variables in the core with ()
                 let score1 = substFree free score
                 nrho <- normalizeX close free rho1
-                -- trace ("generalized to (as rho type): " ++ show (pretty nrho)) $ return ()
+                -- trace ("generalized to (as rho type): " ++ show (pretty nrho) ++ show (score1)) $ return ()
                 return (nrho,score1)
 
         else do -- check that the computation is total
@@ -209,8 +209,13 @@ generalize contextRange range close eff0 rho0 core0
                 -- trace (" normalized: " ++ show (nrho) ++ " from " ++ show rho4) $ return ()
                 let -- substitute to Bound ones
                     tvars = filter (\tv -> not (tvsMember tv free)) (ofuv (TForall [] (map evPred ps4) nrho))
-                    bvars = [TypeVar id kind Bound | TypeVar id kind _ <- tvars]
-                    bsub  = subNew (zip tvars (map TVar bvars))
+
+                -- create fresh type variables for the bounds
+                -- important to avoid duplicate names (`test/algeff/exn3`)
+                (bvars,bsub) <- freshSub Bound tvars
+                -- bvars <- mapM (\(TypeVar id kind _) -> freshTypeVar kind Bound) tvars
+                let -- bvars = [TypeVar id kind Bound | TypeVar id kind _ <- tvars]
+                    -- bsub  = subNew (zip tvars (map TVar bvars))
                     (TForall [] ps5 rho5) = bsub |-> (TForall [] (map evPred ps4) nrho)
                     -- core
                     core5 = Core.addTypeLambdas bvars $
@@ -222,7 +227,7 @@ generalize contextRange range close eff0 rho0 core0
                 -- extendSub bsub
                 -- substitute more free variables in the core with ()
                 let core6 = substFree free core5
-                -- trace ("generalized to: " ++ show (pretty resTp)) $ return ()
+                -- trace ("generalized to: " ++ show (pretty resTp)  ++ show (core6)) $ return ()
                 return (resTp, core6)
 
   where
@@ -319,7 +324,7 @@ isolate rng free ps eff
                                              -- but if we allow null polyPS, injecting state does not work (see `test/resource/inject2`)
                           tvsMember h free || tvsMember h (ftv ps1))
                     then do -- yeah, we can isolate, and discharge the polyPs hdiv predicates
-                            tv <- freshTVar kindEffect Meta
+                            tv <- freshEffect
                             if isLocal
                              then do -- trace ("isolate local") $ return ()
                                      nofailUnify $ unify (effectExtend lab tv) eff
@@ -547,7 +552,7 @@ resolveHeapDiv free (ev:evs)
                   not (tvsIsEmpty (ftv stp)) -- conservative guess...
                  )
                then do -- return (ev{ evPred = PredSub typeDivergent eff } : evs')
-                       tv   <- freshTVar kindEffect Meta
+                       tv   <- Op.freshEffect
                        let divEff = effectExtend typeDivergent tv
                        inferUnify (Infer (evRange ev)) (evRange ev) eff divEff
                        resolveHeapDiv free evs
@@ -657,7 +662,8 @@ nofailUnify u
 withSkolemized :: Range -> Type -> Maybe Doc -> (Type -> [TypeVar] -> Inf (a,Tvs)) -> Inf a
 withSkolemized rng tp mhint action
   = do (xvars,_,xrho,_) <- Op.skolemizeEx rng tp
-       (x,extraFree) <- action xrho xvars
+       (x,extraFree) <- trace ("withSkolemized: " ++ show xvars ) $
+                         action xrho xvars
        checkSkolemEscape rng xrho mhint xvars extraFree
        return x
        {-
@@ -1544,7 +1550,7 @@ fixedContext propagated fresolved fixedCount named
        return (CtxFunTypes (fixedCount > length fresolved) fargs nargs (fmap fst propagated))
   where
     tvars :: Int -> Inf [Type]
-    tvars n  = mapM (\_ -> Op.freshTVar kindStar Meta) [1..n]
+    tvars n  = mapM (\_ -> Op.freshStar) [1..n]
 
     fixedGuessed :: [(Int,FixedArg)] -> Inf [Type]
     fixedGuessed xs   = fill 0 (sortBy (comparing fst) xs)
@@ -1558,7 +1564,7 @@ fixedContext propagated fresolved fixedCount named
 
     namedGuessed :: Inf [(Name,Type)]
     namedGuessed
-      = mapM (\name -> do { tv <- Op.freshTVar kindStar Meta; return (name,tv) }) named
+      = mapM (\name -> do { tv <- Op.freshStar; return (name,tv) }) named
 
 implicitTypeContext :: Type -> NameContext
 implicitTypeContext tp

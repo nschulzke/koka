@@ -33,4 +33,10 @@ fun test3()
   [[1,2]].showx  // resolves recursively and uses `list/showx(?showlistx=default/showlistx(?showx=int/showx))`
 
 fun test3a()
-  [['a','b']].showx  // resolves recursively and uses `list/showx(?showlistx=chars/showlistx)`
+  [['a','b']].showx  // resolves recursively and uses `list/showx(?showlistx=chars/showlistx)` (as it is shortest)
+
+fun test3b()
+  ['a','b'].list/showx
+
+fun test3c()
+  ['a','b'].showx

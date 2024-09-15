@@ -173,7 +173,6 @@ synTypeDef modName (Core.Data dataInfo isExtend)
 synCopyCon :: Name -> DataInfo -> ConInfo -> DefGroup Type
 synCopyCon modName info con
   = let rc = rangeHide (conInfoRange con)
-        tp = typeApp (TCon (TypeCon (dataInfoName info) (dataInfoKind info))) [TVar (TypeVar id kind Meta) | TypeVar id kind _ <- (dataInfoParams info)]
         defName = unqualify $ copyNameOf (dataInfoName info)
 
         fullTp = let (vars,preds,rho) = splitPredType (conInfoType con)

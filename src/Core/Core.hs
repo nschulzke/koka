@@ -1155,7 +1155,7 @@ openEffectExpr :: Effect -> Effect -> Type -> Type -> Expr -> Expr
 openEffectExpr effFrom effTo tpFrom tpTo expr
   = if (hasNoEffectExpr expr)
      then expr
-     else --trace ("open effect: " ++ show (map pretty [effFrom,effTo,tpFrom,tpTo])) $
+     else -- trace ("open effect: " ++ show (map pretty [effFrom,effTo,tpFrom,tpTo])) $
           App (TypeApp varOpen [effFrom,effTo,tpFrom,tpTo]) [expr]
   where
     varOpen = Var (TName nameEffectOpen tpOpen) (InfoExternal [(Default,"#1")])    -- NOTE: quite fragile as it relies on the exact definition in core.kk

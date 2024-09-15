@@ -486,7 +486,9 @@ ppTypeVar env (TypeVar id kind flavour)
                     Meta   -> text "_"
                     Skolem -> if (coreIface env) then text "__" else text "$"
                     _      -> empty in
-      (if showFlavours env then flav else empty) <.> nicePretty (nice env) id <.> (if (showIds env) then text ("=" ++ show id) else empty)
+      (if showFlavours env then flav else empty) <.>
+         -- text (show id)
+         nicePretty (nice env) id <.> (if (showIds env) then text ("=" ++ show id) else empty)
 
 ppTypeCon :: Env -> TypeCon -> Doc
 ppTypeCon env (TypeCon name kind)

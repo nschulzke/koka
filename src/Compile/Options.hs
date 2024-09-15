@@ -70,6 +70,7 @@ prettyEnvFromFlags flags
                  , TP.htmlJs          = htmlJs flags
                  , TP.verbose         = verbose flags
                  , TP.coreShowTypes   = showCoreTypes flags
+                 , TP.showIds         = showTypeIds flags
                  }
 
 
@@ -121,8 +122,10 @@ data Flags
          , showKindSigs     :: !Bool
          , showSynonyms     :: !Bool
          , showCore         :: !Bool
+         , showInitialCore  :: !Bool
          , showFinalCore    :: !Bool
          , showCoreTypes    :: !Bool
+         , showTypeIds      :: !Bool
          , showAsmCS        :: !Bool
          , showAsmJS        :: !Bool
          , showAsmC         :: !Bool
@@ -264,7 +267,8 @@ flagsNull
           True
           -- show
           False False  -- kinds kindsigs
-          False False False False -- synonyms core fcore core-types
+          False False False False -- synonyms core icore fcore
+          False False -- core-types type-ids
           False -- show asm
           False
           False
@@ -446,8 +450,10 @@ options = (\(xss,yss) -> (concat xss, concat yss)) $ unzip
  , flag   []    ["showhiddentypesigs"]   (\b f -> f{showHiddenTypeSigs=b})"(implies --showtypesigs) show hidden type signatures of definitions"
  , flag   []    ["showsynonyms"]   (\b f -> f{showSynonyms=b})      "show expanded type synonyms in types"
  , flag   []    ["showcore"]       (\b f -> f{showCore=b})          "show core"
+ , flag   []    ["showicore"]      (\b f -> f{showInitialCore=b})   "show initial core (right after type checking)"
  , flag   []    ["showfcore"]      (\b f -> f{showFinalCore=b})     "show final core (with backend optimizations)"
  , flag   []    ["showcoretypes"]  (\b f -> f{showCoreTypes=b})     "show full types in core"
+ , flag   []    ["showtypeids"]    (\b f -> f{showTypeIds=b})       "show numeric type variable ids"
  , flag   []    ["showcs"]         (\b f -> f{showAsmCS=b})         "show generated c#"
  , flag   []    ["showjs"]         (\b f -> f{showAsmJS=b})         "show generated javascript"
  , flag   []    ["showc"]          (\b f -> f{showAsmC=b})          "show generated C"

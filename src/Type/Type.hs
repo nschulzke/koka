@@ -286,12 +286,15 @@ isMonoType tp
 --------------------------------------------------------------------------}
 
 instance Eq TypeVar where
-  tv1 == tv2  = (typeVarId tv1 == typeVarId tv2)
+  tv1 == tv2  = (typeVarId tv1 == typeVarId tv2) -- && (typevarFlavour tv1 == typevarFlavour tv2)
 
 instance Ord TypeVar where
-  tv1 <  tv2      = (typeVarId tv1 < typeVarId tv2)
-  tv1 <= tv2      = (typeVarId tv1 <= typeVarId tv2)
-  compare tv1 tv2 = compare (typeVarId tv1) (typeVarId tv2)
+  -- tv1 <  tv2      = (typeVarId tv1 < typeVarId tv2) || (typeVarId tv)
+  -- tv1 <= tv2      = (typeVarId tv1 <= typeVarId tv2)
+  compare tv1 tv2 = case compare (typeVarId tv1) (typeVarId tv2) of
+                      -- EQ   -> compare (typevarFlavour tv1) (typevarFlavour tv2)
+                      ltgt -> ltgt
+
 
 
 instance Eq TypeCon where

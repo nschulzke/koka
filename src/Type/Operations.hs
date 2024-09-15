@@ -12,7 +12,7 @@
 module Type.Operations( instantiate
                       , instantiateEx, instantiateNoEx, extend
                       , skolemize, skolemizeEx
-                      , freshTVar
+                      , freshTVar, freshEffect, freshStar
                       , Evidence(..)
                       , freshSub
                       , isOptionalOrImplicit, splitOptionalImplicit, requiresImplicits
@@ -154,9 +154,9 @@ freshSub flavour vars
 
 
 freshSubX :: HasUnique m => (TypeVar -> Type) -> Flavour -> [TypeVar] -> m ([TypeVar],Sub)
-freshSubX makeTVar flavour vars
+freshSubX makeType flavour vars
   = do tvars <- mapM (\tv -> freshTypeVar (typevarKind tv) flavour) vars
-       let sub = subNew (zip vars (map makeTVar tvars))
+       let sub = subNew (zip vars (map makeType tvars))
        return (tvars,sub)
 
 {-
@@ -187,3 +187,13 @@ freshTVar :: HasUnique m => Kind -> Flavour -> m Type
 freshTVar kind flavour
   = do tv <- freshTypeVar kind flavour
        return (TVar tv)
+
+
+freshEffect :: HasUnique m => m Effect
+freshEffect
+  = freshTVar kindEffect Meta
+
+freshStar :: HasUnique m => m Tau
+freshStar
+  = freshTVar kindStar Meta
+

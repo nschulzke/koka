@@ -19,7 +19,7 @@ import std/core/delayed = std/core/delayed pub = "";
 import std/core/console = std/core/console pub = "";
 import std/core = std/core = "";
 pub fun test : forall<a,b> (x : a, y : b) -> a
- = fn(x: 10, y: 11){
+ = fn(x: 16, y: 17){
  val _ : ()
  = std/core/types/@drop(y);
  x;

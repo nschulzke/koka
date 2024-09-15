@@ -41,7 +41,7 @@ import qualified Data.Set as S
 -- data Env = Env{ inlineMap :: M.NameMap Expr }
 -- data Info = Info{ occurrences :: M.NameMap Int }
 
-simplifyDefs :: Pretty.Env -> Bool -> Bool -> Int -> Int -> CorePhase b ()
+simplifyDefs :: HasCallStack => Pretty.Env -> Bool -> Bool -> Int -> Int -> CorePhase b ()
 simplifyDefs penv unsafe ndebug nRuns duplicationMax
   = liftCorePhaseUniq $ \uniq defs ->
     runSimplify unsafe ndebug duplicationMax uniq penv (simplifyN nRuns (uniquefyDefBodies defs))
@@ -52,7 +52,7 @@ simplifyN nRuns defs
     else do defs' <- simplify defs
             simplifyN (nRuns-1) defs'
 
-uniqueSimplify :: (HasUnique m, Simplify a) => Pretty.Env -> Bool -> Bool -> Int -> Int -> a -> m a
+uniqueSimplify :: HasCallStack => (HasUnique m, Simplify a) => Pretty.Env -> Bool -> Bool -> Int -> Int -> a -> m a
 uniqueSimplify penv unsafe ndebug nRuns duplicationMax expr
   = do u <- unique
        let (x,u') = runSimplify unsafe ndebug duplicationMax u penv
@@ -61,10 +61,10 @@ uniqueSimplify penv unsafe ndebug nRuns duplicationMax expr
        return x
 
 
-uniquefyDefBodies :: [DefGroup] -> [DefGroup]
+uniquefyDefBodies :: HasCallStack => [DefGroup] -> [DefGroup]
 uniquefyDefBodies dgs  = map uniquefyDefGroupBody dgs
 
-uniquefyDefGroupBody :: DefGroup -> DefGroup
+uniquefyDefGroupBody :: HasCallStack => DefGroup -> DefGroup
 uniquefyDefGroupBody (DefRec defs) = DefRec (map uniquefyDefBody defs)
 uniquefyDefGroupBody (DefNonRec def) = DefNonRec (uniquefyDefBody def)
 
@@ -81,7 +81,7 @@ class Simplify a where
   when necessary.
 --------------------------------------------------------------------------}
 
-topDown :: Expr -> Simp Expr
+topDown :: HasCallStack => Expr -> Simp Expr
 
 -- Inline simple let-definitions
 topDown (Let dgs body)

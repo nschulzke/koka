@@ -28,7 +28,7 @@ fun msum-expand( xs, .?monoid )
   // no eta expansion is needed anymore and mzero is a value.
 
 fun list/monoid( ?monoid : monoid<a>)  : monoid<list<a>>
-  Monoid([zero()], fn(xs,ys) zipwith(xs,ys,fn(x,y) plus(x,y)))  // again eta expansion
+  Monoid([zero()], fn(xs,ys) zipwith(xs,ys,plus)) //fn(x,y) plus(x,y)))  // again eta expansion
 
 fun monoid-expand( .?monoid )
   Monoid([mzero],fn(xs,ys) zipwith(xs,ys,mplus))
@@ -39,3 +39,6 @@ fun test1()
 
 fun test2()
   [[1.0],[2.0]].msum.msum
+
+fun main()
+  test1().println
