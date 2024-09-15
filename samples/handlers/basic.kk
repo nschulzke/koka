@@ -1,8 +1,8 @@
 /* Basic effect handler examples
    Prerequisites:
-   - syntax/basic
-   - syntax/var
-   - syntax/with
+   - learn/basic
+   - learn/var
+   - learn/with
 */
 module basic
 

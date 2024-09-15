@@ -1,6 +1,6 @@
 # Koka Examples
 
-* `syntax`: start with this folder where each file
+* `learn`: start with this folder where each file
   describes a particular feature of Koka, like `with`-syntax, implicit parameters, local qualification, etc.
 * `handlers`: examples of algebraic effect handlers.
 * `basic`: some small Koka programs that demonstrate various features.  

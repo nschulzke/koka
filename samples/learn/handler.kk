@@ -1,10 +1,10 @@
 /* Basic examples for `handler` expressions
    See also `samples/handler/basic` for examples of effect handlers in practice.
    Prerequisites:
-   - `syntax/basic`
-   - `syntax/with`
+   - `learn/basic`
+   - `learn/with`
 */
-module syntax/handler
+module learn/handler
 
 // An effect declaration of type `:example` with
 // a single (control) operation `raise`.
@@ -29,7 +29,7 @@ fun example1() : console int
   h(fn() foo(True))
 
 
-// The `with` statement (see `syntax/with`) can help to
+// The `with` statement (see `learn/with`) can help to
 // specify the previous handler more concisely as:
 fun example2() : console int
   with handler
@@ -77,8 +77,10 @@ fun print-ask() : <ask,console> ()
 
 
 // Using different handlers for each invocation
-pub fun main()
+fun example5()
   with val ask = 42 in print-ask()
   with val ask = 43 in print-ask()
 
+pub fun main()
+  example5()
 

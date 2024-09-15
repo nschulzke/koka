@@ -41,7 +41,7 @@ type zipper<a>
 
 // Reconstruct a tree from a zipper (updates in place)
 // This function is "fully in-place" (fip) as it does not (de)allocate and runs in constant stack space
-// (see also ``samples/syntax/fip``)
+// (see also ``samples/learn/fip``)
 fip fun move-up(z : zipper<a>, t : tree<a>) : tree<a>
   match z
     NodeR(c, l, k, v, z1) -> z1.move-up(Node(c, l, k, v, t))

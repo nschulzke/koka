@@ -470,7 +470,7 @@ pub fip extern @field-addr-of( x : a, conname : string, fieldname : string ) : @
   inline ""  // compiled specially
 
 // First-class constructor context (for _tail recursion modulo cons_ (TRMC) optimization).
-// See also ``samples/syntax/contexts`` for further examples.
+// See also ``samples/learn/contexts`` for further examples.
 abstract value type cctx<a,b>
   con @Cctx( res : a, holeptr : @field-addr<b> )
 

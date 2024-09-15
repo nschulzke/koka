@@ -7,9 +7,9 @@
 // >  <https://www.microsoft.com/en-us/research/publication/fiptree-tr/>
 //
 // Prerequisites:
-//   - `syntax/basic`
-//   - `syntax/with`
-module syntax/contexts
+//   - `learn/basic`
+//   - `learn/with`
+module learn/contexts
 
 // Consider the well-known `map` function that maps a function over a list
 fun map-std( xs : list<a>, ^f : a -> e b ) : e list<b>

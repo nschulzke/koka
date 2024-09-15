@@ -1,8 +1,8 @@
 /* Shows the use of a named effect handlers for multiple reader effects.
 
    Prerequisites:
-   - syntax/var
-   - syntax/with
+   - learn/var
+   - learn/with
    - handlers/basic
 */
 module ask-poly

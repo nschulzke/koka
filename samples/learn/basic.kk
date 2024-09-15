@@ -1,7 +1,7 @@
 /* Basic syntax examples
    See also: <https://koka-lang.github.io/koka/doc/book.html>
 */
-module syntax/basic
+module learn/basic
 
 // Named function declarations use `fun`
 // while anonymous function expressions use `fn`

@@ -12,9 +12,9 @@
 //  <https://www.microsoft.com/en-us/research/publication/fiptree-tr/>
 //
 // Prerequisites:
-//   `syntax/basic`
-//   `syntax/implicits`
-module syntax/fip
+//   `learn/basic`
+//   `learn/implicits`
+module learn/fip
 
 import std/core/undiv
 

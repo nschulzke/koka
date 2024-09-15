@@ -1,8 +1,8 @@
 /* Shows `with` syntax examples.
    Prerequisites:
-   - syntax/basic
+   - learn/basic
 */
-module syntax/with
+module learn/with
 
 /* The `with` statement essentially wraps all statements
    following it into a function and passes that as

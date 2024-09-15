@@ -8,8 +8,8 @@
    "First-class named effect handlers", Daan Leijen, Ningning Xie, and Youyou Cong, 2020.
 
    Prerequisites:
-   - syntax/var
-   - syntax/with
+   - learn/var
+   - learn/with
    - handlers/basic
    - handlers/named/ask
 */

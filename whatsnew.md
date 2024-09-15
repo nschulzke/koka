@@ -79,11 +79,11 @@ generating direct C code without needing a runtime system. To learn more:
 ### v2.6.0, 2023-12-30:
 
 - Using the new __first-class constructor contexts__ to improve efficiency of various `std/core` functions
-  like `partition`. See the `samples/syntax/contexts.kk` example for an overview, and 
+  like `partition`. See the `samples/learn/contexts.kk` example for an overview, and 
   the accompanying [paper][fccontext] for an in-depth discussion.
 
 - Using further __fully in-place__ `fip` and `fbip` annotations for various `std/core` functions.
-  See the `samples/syntax/fip.kk` example for an overview and the [paper][fip] for a more technical overview.
+  See the `samples/learn/fip.kk` example for an overview and the [paper][fip] for a more technical overview.
 
 - Initial VS Code language support with type information, jump to definition,
   run test functions directly from the editor, automatic Koka installation, and many more things.

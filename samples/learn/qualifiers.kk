@@ -1,7 +1,7 @@
 // Qualified names and disambiguation (overloading)
 // Prerequisites:
-//  - syntax/basic
-module syntax/qualifiers
+//  - learn/basic
+module learn/qualifiers
 
 // We can always use fully qualified to disambiguate plain names.
 // In VS Code, press `ctrl+alt` (or `ctrl+option` on the mac) to see
@@ -52,3 +52,5 @@ fun example4b(x)
   int/foo(x) + foo("hi there")   // without more type information, we need to qualify explicitly
 
 // Continue reading `implicits.kk` on how to combine overloading with implicit parameters.
+pub fun main()
+  example4b(42)

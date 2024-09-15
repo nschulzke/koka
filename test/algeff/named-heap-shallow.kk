@@ -8,8 +8,8 @@
    "First-class named effect handlers", Daan Leijen, Ningning Xie, and Youyou Cong, 2020.
 
    Prerequisites:
-   - syntax/var
-   - syntax/with
+   - learn/var
+   - learn/with
    - handlers/basic
    - handlers/named/basic
 */
@@ -31,7 +31,7 @@ fun with-ref(init : a, action : ref<s,a> -> <heap<s>,div|e> b) : <heap<s>,div|e>
   with r = named handler {
     fun get() { s }
     fun set(x){ s := x }
-    //fun wrong(r){ r.get; () }    
+    //fun wrong(r){ r.get; () }
   }
   action(r)
 }
@@ -41,8 +41,8 @@ fun heap(action : forall<s> () -> <heap<s>,div|e> a) : <div|e> a {  // required 
   heapx(action)
 }
 
-fun heapx(action : () -> <heap<s>,div|e> a) : <div|e> a {  
-  with rcontrol new-ref(init){ 
+fun heapx(action : () -> <heap<s>,div|e> a) : <div|e> a {
+  with rcontrol new-ref(init){
     with heapx
     with r = with-ref(init)
     rcontext.resume-shallow(r)

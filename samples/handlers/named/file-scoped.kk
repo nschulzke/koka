@@ -1,8 +1,8 @@
 /* Shows the use of a named effect handlers to model files.
 
    Prerequisites:
-   - syntax/var
-   - syntax/with
+   - learn/var
+   - learn/with
    - handlers/basic
    - handlers/named/ask
 */

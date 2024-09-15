@@ -8,9 +8,9 @@
 // design space of type classes. Koka aims to be the C of FP -- not the C++ :-)
 //
 // Prerequisites:
-//  - syntax/basic
-//  - syntax/qualifiers
-module syntax/implicits
+//  - learn/basic
+//  - learn/qualifiers
+module learn/implicits
 
 import std/num/float64
 
