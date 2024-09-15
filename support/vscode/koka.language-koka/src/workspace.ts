@@ -17,7 +17,7 @@ import * as semver from "semver"
 const home = os.homedir();
 const kokaExeName = (os.platform() === "win32" ? "koka.exe" : "koka")
 const defaultShell = (os.platform() === "win32" ? "C:\\Windows\\System32\\cmd.exe" : null)
-const binaryPlatforms = ["win32-x64", "darwin-arm64", "darwin-x64", "linux-x64"]
+const binaryPlatforms = ["windows-x64", "macos-arm64", "macos-x64", "linux-x64"]
 
 // Development: set kokaDevDir to a non-empty string to (un)install from a local bundle instead of github
 const kokaDevDir = ""
@@ -201,7 +201,7 @@ function findCompilerPaths(vsConfig: vscode.WorkspaceConfiguration, developmentP
 
     // Linux ghcup installation does not show up in vscode's process.PATH,
     // ensure stack uses the correct ghc by sourcing the ghcup env script
-    if (!["win32"].includes(os.platform())) {
+    if (osGetPlatform()!="windows") {
       const ghcEnv = `${home}/.ghcup/env`
       if (fs.existsSync(ghcEnv)) {
         cmdGetInstallRoot = `${process.env.SHELL} -c "source ${ghcEnv} && stack path --local-install-root"`
@@ -272,7 +272,7 @@ async function installKoka(context: vscode.ExtensionContext, config: vscode.Work
 
   // check platform
   let warning = ""
-  const platform = `${os.platform()}-${os.arch()}`
+  const platform = `${osGetPlatform()}-${osGetArch()}`
   if (!binaryPlatforms.includes(platform)) {
     warning = `Unfortunately, it looks like your platform ${platform} does not have a binary installer -- see <https://github.com/koka-lang/koka> for build instructions.  `
   }
@@ -296,7 +296,7 @@ async function installKoka(context: vscode.ExtensionContext, config: vscode.Work
   // download and install in a terminal
   let shellCmd = ""
   const flags = "--vscode"  // TODO: add `--force` to force all default actions? (like installing clang on windows if needed)
-  if (os.platform() === "win32") {
+  if (osGetPlatform() === "windows") {
     if (kokaDevDir) {
       const kokaBundle = getKokaBundleDir(kokaDevDir, latestCompilerVersion)
       shellCmd = `${kokaDevDir}/util/install.bat ${flags} ${kokaBundle} && exit`
@@ -346,13 +346,20 @@ async function installKoka(context: vscode.ExtensionContext, config: vscode.Work
   return result;
 }
 
+function osGetPlatform() : string {
+  var platform = os.platform()
+  if (platform=="win32") return "windows"
+  else if (platform=="darwin") return "macos"
+  else return platform
+}
+
+function osGetArch() : string {
+  return os.arch()
+}
+
 function getKokaBundleDir(kokaDir: string, version: string): string {
   const kokaBundleBase = `${kokaDir}/bundle/v${version}/koka-v${version}`
-  const kokaBundle = (os.platform() == "win32"
-    ? `${kokaBundleBase}-windows-x64.tar.gz`
-    : (os.platform() == "darwin"
-      ? `${kokaBundleBase}-macos-arm64.tar.gz`
-      : `${kokaBundleBase}-linux-x64.tar.gz`))
+  const kokaBundle = `${kokaBundleBase}-${osGetPlatform()}-${osGetArch()}.tar.gz`
   return kokaBundle
 }
 
@@ -374,7 +381,7 @@ async function uninstallKoka(context: vscode.ExtensionContext) {
 
   let shellCmd = ""
   const flags = "--uninstall --vscode"  // don't add --force as the default is to _not_ uninstall
-  if (os.platform() === "win32") {
+  if (osGetPlatform() === "windows") {
     if (kokaDevDir) {
       shellCmd = `"${kokaDevDir}/util/install.bat" ${flags}`
     }

@@ -15,6 +15,8 @@ generating direct C code without needing a runtime system. To learn more:
 
 - Declare reference types as `reference type` (instead of `ref type`).
 
+- Declare divergent types as `div type/effect` (instead of `rec type/effect`).
+
 - Various bug fixes.
 
 ### v3.1.2, 2024-05-30
