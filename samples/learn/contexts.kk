@@ -3,8 +3,9 @@
 // See the paper for a more in-depth discussion:
 //
 // >  "The Functional Essence of Imperative Binary Search Trees",
-// >  Anton Lorenzen, Daan Leijen, Wouter Swierstra, and Sam Lindley,
+// >  Anton Lorenzen, Daan Leijen, Wouter Swierstra, and Sam Lindley, PLDI'24
 // >  <https://www.microsoft.com/en-us/research/publication/fiptree-tr/>
+// >  <https://www.microsoft.com/en-us/research/uploads/prodnew/2024/05/fiptree-full.pdf>
 //
 // Prerequisites:
 //   - `learn/basic`
@@ -77,7 +78,7 @@ pub fun test-acc()
 // Append takes a context of type `:a` with hole `:b` and writes a
 // a context `cctx<b,c>` into the hole to get a new context of type
 // `:a` with hole `:c`. Apply `(.++)` plugs the hole `:b` in a
-// context `cctx<a,b>` and returns the whole structure `:a`.
+// context `cctx<a,b>` and returns _the whole structure_ `:a`.
 // Often the hole and the structure are of the same type, and
 // we have the `alias ctx<a> = cctx<a,a>`.
 //
@@ -85,7 +86,7 @@ pub fun test-acc()
 fip fun map-td( xs : list<a>, ^f : a -> e b, acc : ctx<list<b>> ) : e list<b>
   match xs
     Cons(x,xx) -> xx.map-td( f, acc ++ ctx Cons(f(x), _) )  // plug `Cons(f(x),_)` into the hole in `acc`
-    Nil        -> acc ++. Nil                               // plug the hole with `Nil`
+    Nil        -> acc ++. Nil                               // plug the hole with `Nil`, and return the full accumulated list
 
 fip fun map-td-entry(xs,^f)
   map-td(xs,f,ctx _)     // start with an empty context
@@ -150,7 +151,7 @@ pub fun example-partition()
   [1,2,3,4,5].partition-entry(is-odd)
 
 
-// See <https://www.microsoft.com/en-us/research/uploads/prod/2023/07/fiptree-tr-v4.pdf>
+// See <https://www.microsoft.com/en-us/research/uploads/prodnew/2024/05/fiptree-full.pdf>
 // for more complex examples on balanced tree insertion algorithms.
 
 pub fun main()

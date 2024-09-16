@@ -27,7 +27,7 @@ pub fun example1()
   with twice
   println("hi")
 
-
+// The above is equivalent to:
 pub fun example1-expanded()
   twice
     twice
@@ -60,6 +60,7 @@ pub fun example2()
   println(x)
 
 
+// which is equivalent to:
 pub fun example2-expanded()
   list(1,10).map fn(x)
     println(x)
@@ -78,7 +79,7 @@ pub fun example3()
          val ask = 21
   println(ask-twice())
 
-
+// Which is the same as:
 pub fun example3-expanded()
   (handler{ val ask = 21 }) (fn(){
     println(ask-twice())

@@ -32,7 +32,7 @@ fun example2()
 
 // Trailing `fn` anonymous function arguments can be put outside the parenthesis following the call:
 // `f(e1,...,eN) fn(x){ ... }  ~>  f(e1,...,eN, fn(x){ ... })`
-// This is also called _trailing lambdas_ (and Koka was the first language to have this as far as we know)
+// This is also called _trailing lambdas_
 fun example3()
   list(1,5).map fn(i){
     println(i)
@@ -99,7 +99,7 @@ fun increment2(xs) {
   xs.map(fn(x){ x + 1 }).filter(fn(x){ x > 2 })
 }
 
-// `trace-info` also traces the current file and line number.
+// Use trace for debug output
 fun example-trace(): ()
-  trace-info("example trace")
+  trace-info("example trace")       // `trace-info` also traces the current file and line number.
   trace("module: " ++ kk-module)

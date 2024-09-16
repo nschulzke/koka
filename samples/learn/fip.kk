@@ -8,7 +8,7 @@
 //
 // And also:
 //  "The Functional Essence of Imperative Binary Search Trees",
-//  Anton Lorenzen, Daan Leijen, Wouter Swierstra, and Sam Lindley,
+//  Anton Lorenzen, Daan Leijen, Wouter Swierstra, and Sam Lindley, PLDI'24
 //  <https://www.microsoft.com/en-us/research/publication/fiptree-tr/>
 //
 // Prerequisites:
