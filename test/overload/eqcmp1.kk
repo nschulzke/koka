@@ -59,6 +59,14 @@ fun test3a( ?eq : (int,int) -> bool )
 fun test3b()
   equal(1,2)  // use `int/eq` instead of `cmpx/eq(int/cmpx)` as it is shorter
 
+fun test3c(?cmpx : (int,int) -> order)
+  equal(1,2)  // use `cmpx/eq(_,_,?cmpx)` (instead of `int/eq`) as it originates with the most locals
+
+fun test3d(?cmpx : (int,int) -> order)
+  fun eq(x,y) cmpx/eq(x,y)   // use `?cmpx`
+  equal(1,2)                 // use `eq` as a local
+
+
 fun test4a(x : int, y :int, ?cmpx : (int,int) -> order)
   (equal(1,2)  // use `cmpx/eq(?cmpx)` (instead of `int/eq`) to prefer implicits originating from the local declarations (instead of the global `int/eq`)
   ,equal('a','b')  // use `char/eq` since `cmpx/eq(?cmpx)` does not type check
