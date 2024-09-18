@@ -361,7 +361,7 @@ inferRecDef2 topLevel coreDef divergent (def,mbAssumed)
               <- case (mbAssumed,resCore1) of
                          (Just (_,rho), Core.TypeLam tvars expr) | isRho rho  -- we assumed a monomorphic type, but generalized eventually
                             -> -- fix it up by adding the polymorphic type application
-                               trace " rec rho/poly" $
+                               -- trace " rec rho/poly" $
                                do assumedTpX <- subst assumedTp >>= normalize True -- resTp0
                                   -- resTpX <- subst resTp0 >>= normalize
                                   simexpr <- return expr -- liftUnique $ uniqueSimplify penv False False 1 {-runs-} 0 expr
@@ -391,14 +391,14 @@ inferRecDef2 topLevel coreDef divergent (def,mbAssumed)
                                    return resCore2
                                -}
                          (Just (_,_), _) | divergent  -- we added a divergent effect, fix up the occurrences of the assumed type
-                            -> trace "  divergent" $
+                            -> -- trace "  divergent" $
                                do assumedTpX <- normalize True assumedTp >>= subst -- resTp0
                                   simResCore1 <- return resCore1 -- liftUnique $ uniqueSimplify penv False False 1 0 resCore1
                                   coreX <- subst simResCore1
                                   let resCoreX = (CoreVar.|~>) [(Core.TName ({- unqualify -} name) assumedTpX, Core.Var (Core.TName ({- unqualify -} name) resTp1) info)] coreX
                                   return (resTp1, resCoreX)
                          (Just _,_)  -- ensure we insert the right info  (test: static/div2-ack)
-                            -> trace "  rec normal" $
+                            -> -- trace "  rec normal" $
                                do assumedTpX <- normalize True assumedTp >>= subst
                                   simResCore1 <- return resCore1 -- liftUnique $ uniqueSimplify penv False False 1 0 resCore1
                                   coreX <- subst simResCore1
