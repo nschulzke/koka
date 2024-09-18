@@ -420,8 +420,9 @@ inlineDefSort
                     (s,_) <- stringLit
                     return [if c == '^' then Borrow else Own | c <- s]
                  <|> return []
-       (do fip <- try parseFip
-           (_,doc) <- dockeyword "fun"
+       (do (fip,doc) <- try $ do fip <- parseFip
+                                 (_,doc) <- dockeyword "fun"
+                                 return (fip,doc)
            return (DefFun pinfos fip,inl,isRec,spec,doc)
         <|>
         do (_,doc) <- dockeyword "val"
