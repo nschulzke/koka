@@ -1,5 +1,5 @@
 // see issue: https://github.com/koka-lang/koka/issues/564
-module scheduler1
+module scheduler2
 
 import std/core/list
 import std/os/env

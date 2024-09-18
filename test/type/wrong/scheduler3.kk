@@ -1,5 +1,5 @@
 // see issue: https://github.com/koka-lang/koka/issues/564
-module scheduler1
+module scheduler3
 
 import std/core/list
 import std/os/env
@@ -15,7 +15,7 @@ fun scheduler(f : () -> <pure,process,st<global>|e> ()) : <st<global>,pure|e> ()
   // without the following signature the file does not typecheck
   // clearly, the signature should be rejected as eventually
   // the real type of `q` is `ref<global, dequeue<() -> <div,st<global>,exn|$e> ()>>` (with `exn`!)
-  val q  : ref<global, dequeue<() -> <div, st<global> | _e> ()>> // incorrect, but the program is accepted !
+  val q  // : ref<global, dequeue<() -> <div, st<global> | _e> ()>> // incorrect, but the program is accepted !
          // : ref<global, dequeue<() -> <div, st<global>, exn> ()>>  // correct signature, program is correctly rejected
          // : ref<global, dequeue<() -> <div, st<global>> ()>>       // incorrect signature that is correctly rejected
         = ref(emptyQueue())

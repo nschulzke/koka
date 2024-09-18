@@ -833,7 +833,10 @@ moduleValidate mod
                       , modIfaceTime  = ftIface
                       , modLibIfaceTime = ftLibIface
                       }
-       phaseVerbose 3 "validate" (\penv -> TP.ppName penv (modName mod') <.> text (": times: " ++ show (stale,ftSource,modSourceTime mod)))
+       phaseVerbose 3 "validate" $ \penv -> TP.ppName penv (modName mod') <.>
+                                            text (": " ++ if stale then "stale, " else "") <.>
+                                            text "source:" <+> text (show ftSource) <+>
+                                            parens (text "previous :" <+> text (show (modSourceTime mod)))
        if stale
          then return $ moduleReset mod'
          else return mod'
