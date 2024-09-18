@@ -243,6 +243,11 @@ command st buildc cmd
 
   None        -> do{ next st buildc}
 
+  _           -> do{ messageInfoLn st "interpreter definitions are not supported at this time."
+                   ; messageInfoLnLn st "(type \":?\" for help on commands)"
+                   ; next st buildc
+                   }
+
 
 -- todo: set error range
 loadModules :: State -> B.BuildContext -> [FilePath] -> Bool -> Bool -> IO (B.BuildContext, Maybe Range)
