@@ -461,11 +461,16 @@ moduleWaitForPubImports tcheckedMap alreadyDone0 importDeps
            alreadyDone = alreadyDone0 ++ importNames
            extras = nub $ [(modShouldOpen mod,Core.importName imp)
                           | mod <- imports, imp <- modCoreImports mod,
-                            isPublic (Core.importVis imp), not (Core.isCompilerImport imp),
+                            -- import public modules
+                            isPublic (Core.importVis imp)
+                            -- in a generated main, with @open import <mod>, also import its imports (for `println` for example)
+                            || (modShouldOpen mod && Core.isUserImport imp {- don't import `std/core` again -}),
+                            not (Core.isCompilerImport imp),
                             not (Core.importName imp `elem` alreadyDone)]
        if null extras
          then return imports
-         else do extraImports <- moduleWaitForPubImports tcheckedMap alreadyDone extras
+         else -- trace ("extra imports: " ++ show extras) $
+              do extraImports <- moduleWaitForPubImports tcheckedMap alreadyDone extras
                  return (extraImports ++ imports)
 
 -- Return all (user and pub) core imports for a list of user imported modules.

@@ -1,4 +1,4 @@
 import tail
 
-fun main()
-  "Done".println
+pub fun main()
+  tail/main()

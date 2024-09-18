@@ -356,7 +356,7 @@ buildcCompileExpr addShow typeCheckOnly importNames0 expr buildc
                          ]
 
        withVirtualModule sourcePath content buildc $ \mainModName buildc1 ->
-         -- trace ("virtual main: " ++ sourcePath ++ ", name: " ++ show mainModName) $
+         -- trace ("virtual main: " ++ sourcePath ++ "\n  name: " ++ show mainModName ++ "\n  expr: " ++ expr ++ "\n" ++ unlines (map ("  "++) importDecls)) $
          do -- type check first
             let exprName = qualify mainModName (newName "@expr")
             buildc2 <- buildcTypeCheck [] buildc1
@@ -424,7 +424,7 @@ bunlines :: [String] -> BString
 bunlines xs = stringToBString $ unlines xs
 
 -- complete a main function by adding a show function (if `addShow` is `True`), and
--- adding any required rdefault effect handlers (for async, utc etc.)
+-- adding any required default effect handlers (for async, utc etc.) (these are named `@default-<effect>`)
 completeMain :: Bool -> Name -> Type -> BuildContext -> Build (Type,String -> String,String,[String])
 completeMain addShow exprName tp buildc
   = case splitFunScheme tp of
@@ -498,7 +498,7 @@ buildcFindModule :: HasCallStack => ModuleName -> BuildContext -> Module
 buildcFindModule modname buildc
   = case find (\mod -> modName mod == modname) (buildcModules buildc) of
       Just mod -> mod
-      _        -> failure ("Compile.BuildIde.btxFindModule: cannot find " ++ show modname ++ " in " ++ show (map modName (buildcModules buildc)))
+      _        -> failure ("Compile.BuildContext.buildcFindModule: cannot find " ++ show modname ++ " in " ++ show (map modName (buildcModules buildc)))
 
 -- Return a module by name
 buildcLookupModule :: HasCallStack => ModuleName -> BuildContext -> Maybe Module
