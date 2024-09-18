@@ -602,11 +602,23 @@ fun get( ref: ref<h,a>) : <read<h>,div> a
 inline extern unsafe-st(f : () -> <st<global>|e> a ) : (() -> e a)
   inline "#1"
 
-fun protect-check( resumed : ref<global,bool>,  k : resume-result<b,r> -> e r, res : r ) : e r
+fun protect-prompt( resumed : ref<global,bool>,  k : resume-result<b,r> -> e r, res : r ) : e r
   val did-resume : bool = (unsafe-st{ !resumed })()
-  if !did-resume
-   then k(Finalize(res)) //finalize(k,res)
-   else res
+  if did-resume then
+    // if resumed, we no longer need to protect
+    res
+  elif !yielding() then
+    // otherwise, if we are not yielding, resume k with finalization (to run all finally clauses)
+    k(Finalize(res))
+  elif yielding-non-final() then
+    // if we yield non-final to an operation, extend the continuation with this prompt (so we keep protecting after being resumed)
+    yield-cont( fn(cont,x) protect-prompt(pretend-decreasing(resumed),k,cont(x)) )
+  else
+    // if we are in a final yield, capture it, resume k with finalization, and reyield
+    val yld = yield-capture()
+    k(Finalize(res))
+    if yielding() return yield-extend( fn(_x) unsafe-reyield(yld) ) // yikes, a finally clause is itself yielding...
+    unsafe-reyield(yld)
 
 fun protect( x : a, clause : (x:a, k: b -> e r) -> e r, k : resume-result<b,r> -> e r ) : e r
   val resumed = (unsafe-st{ref(False)})()
@@ -614,8 +626,7 @@ fun protect( x : a, clause : (x:a, k: b -> e r) -> e r, k : resume-result<b,r> -
     (unsafe-st{resumed := True})()
     k(Deep(ret))
   val res = clause(x,kprotect)
-  if yielding() return yield-extend( fn(xres) protect-check(resumed,k,xres) )
-  protect-check(resumed,k,res)
+  protect-prompt(resumed,k,res)
 
 /*
 pub fun clause-control1( clause : (x:a, k: b -> e r) -> e r ) : clause1<a,b,e,r>
@@ -708,8 +719,7 @@ fun protect2( x1 : a1, x2:a2, clause : (x:a1,x:a2, k: b -> e r) -> e r, k : resu
     (unsafe-st{ resumed := True })()
     k(Deep(ret))
   val res = clause(x1,x2,kprotect)
-  if yielding() return yield-extend( fn(xres) protect-check(resumed,k,xres) )
-  protect-check(resumed,k,res)
+  protect-prompt(resumed,k,res)
 
 pub fun clause-control2( clause : (x1:a1, x2:a2, k: b -> e r) -> e r ) : clause2<a1,a2,b,h,e,r>
   Clause2(fn(m,_ev,x1,x2){ yield-to(m, fn(k){ protect2(x1,x2,clause,k) }) })
