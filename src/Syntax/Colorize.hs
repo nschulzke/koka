@@ -256,6 +256,8 @@ showLexemes :: Env -> KGamma -> Gamma -> [Lexeme] -> [String]
 showLexemes env kgamma gamma lexs
   = highlightLexemes fmtQualify (fmtLiterate Nothing env kgamma gamma) CtxNormal [] (fmtQualify lexs)
   where
+    -- entry lexemes:
+
     -- type identifier
     fmtQualify [Lexeme r0 (LexKeyword ":" doc), Lexeme r1 (LexId id)]
       = [Lexeme r0 (LexKeyword ":" doc), Lexeme r1 (tryQualifyType LexId id)]
@@ -273,7 +275,15 @@ showLexemes env kgamma gamma lexs
       = [Lexeme r1 (LexTypedId id (concatMap showLexeme lexs))] -- : Lexeme r2 (LexKeyword ":" doc) : lexs
 
     fmtQualify lexs
-      = map fmtQualifyId lexs
+      = fmtQualifies lexs -- continue doing all
+
+    -- through all lexemes
+    fmtQualifies  (l0@(Lexeme r0 (LexKeyword "import" doc)) : l1@(Lexeme r1 (LexWhite s)) : Lexeme r2 (LexId id) : lexs)
+      = l0 : l1 : Lexeme r2 (LexModule id id) : fmtQualifies lexs
+    fmtQualifies (lex:lexs)
+      = fmtQualifyId lex : fmtQualifies lexs
+    fmtQualifies []
+      = []
 
     -- single identifier
     fmtQualifyId (Lexeme r1 (LexId id))
@@ -313,7 +323,8 @@ fmtLiterate mbRangeMap env kgamma gamma token lexeme s
          TokTypeOp id
                    -> linkFromTypeId env id kgamma fmt
          TokModule mid
-                   -> atag (linkFromModName env mid "") fmt
+                   -> -- trace ("TokModule: " ++ showPlain mid) $
+                      popup (linkFromModName env mid "") fmt fmt
          TokCons qid
                    -> -- atag (linkFromConName env qid) fmt
                       linkFromId env qid "" gamma
@@ -395,7 +406,7 @@ linkFromConName env qname
   = linkFromTypeNameX env (mangleConName qname)
 
 linkFromModName env qname postfix
-  = linkBaseX env (show qname) postfix
+  = linkBaseX env (showPlain qname) postfix
 
 linkFromTypeName env qname
   = linkFromTypeNameX env (mangleTypeName qname)

@@ -382,6 +382,9 @@ Here is a slightly larger program inspired by an
 example in Graham Hutton's most 
 excellent "[Programming in Haskell](http://www.cs.nott.ac.uk/~pszgmh/pih.html)" book:
 
+```unchecked
+import std/num/float64
+```
 ```
 fun main()
   test-uncaesar()

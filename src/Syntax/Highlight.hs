@@ -139,7 +139,7 @@ showLexeme (Lexeme _ lex)
       LexOp id      -> showPlain id
       LexPrefix id  -> showPlain id
       LexWildCard id-> show id
-      LexModule id _ -> show id
+      LexModule id _ -> showPlain id
       LexCons id _  -> show id
       LexTypedId id tp -> showPlain id
       LexKeyword k _ -> normalize k
@@ -274,7 +274,7 @@ highlightLexeme transform fmt0 ctx0 lexeme@(Lexeme rng lex) lexs
             LexString s   -> fmt TokString (show s)
             LexChar c     -> fmt TokString (show c)
 
-            LexModule id mid  -> fmt (TokModule mid) (show id)
+            LexModule id mid  -> fmt (TokModule mid) (showPlain id)
             LexCons id _      -> fmt (if (isCtxType ctx) then TokTypeId id else TokCons id) (showId (unqualify id))
             LexTypedId id tp  -> -- trace ("**fmt type id: " ++ show id ++ ": " ++ show tp) $
                                  fmt (TokId id tp) (showId (unqualify id))
