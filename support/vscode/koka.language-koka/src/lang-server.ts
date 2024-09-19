@@ -39,7 +39,7 @@ export class KokaLanguageServer {
     if (firstRun) {
       stderrOutputChannel = vscode.window.createOutputChannel('Koka Language Server Stderr')
       context.subscriptions.push(stderrOutputChannel)
-      // Remove when we switch to stdio only 
+      // Remove when we switch to stdio only
       stdoutOutputChannel = vscode.window.createOutputChannel('Koka Language Server Stdout')
       context.subscriptions.push(stdoutOutputChannel)
       firstRun = false;
@@ -62,8 +62,9 @@ export class KokaLanguageServer {
   async start(config: KokaConfig, context: vscode.ExtensionContext) {
     console.log(`Koka: Language Server: ${config.compilerPath} ${config.languageServerArgs.join(" ")}, Workspace: ${config.cwd}`)
     let serverOptions: ServerOptions;
-    if (semver.lt(config.compilerVersion, "3.0.5")) {
-      // TODO: Remove the old socket connection when we get to 3.1.0 or something
+    if (config.enableDebugExtension // it seems trace output only works when using the socket interface?
+        || semver.lt(config.compilerVersion, "3.0.5")) {
+      // TODO: Remove the old socket connection when we get to 3.1.0 or something (unless `trace` stops working?)
       let self = this;
       serverOptions = function (): Promise<StreamInfo> {
         return new Promise((resolve, reject) => {
