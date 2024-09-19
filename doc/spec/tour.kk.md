@@ -791,9 +791,10 @@ type color
 
 Special cases of these enumerated types are the `:void` type which has no
 alternatives (and therefore there exists no value with this type), the unit
-type `:()` which has just one constructor, also written as `()` (and
-therefore, there exists only one value with the type `:()`, namely `()`), and
+type `:unit` which has just one constructor `Unit` (and
+therefore, there exists only one value with the type `:unit`, namely `Unit`), and
 finally the boolean type `:bool` with two constructors `True` and `False`.
+As a short-hand, we can also write `:()` for the `:unit` type, and `()` for the `Unit` constructor.
 
 ```unchecked
 type void
@@ -879,7 +880,7 @@ Todo
 
 For the purposes of equational reasoning and termination checking, a `type`
 declaration is limited to finite inductive types. There are two more
-declarations, namely `co type` and `rec type` that allow for co-inductive types,
+declarations, namely `co type` and `div type` that allow for co-inductive types,
 and arbitrary recursive types respectively.
 
 
@@ -1897,7 +1898,7 @@ can make code that uses only linear effects more compact and efficient.
 ### Named and Scoped Handlers { #sec-namedh; }
 
 ~ Todo
-See `samples/named-handlers`.
+See [``samples/handlers/named``][samples-named].
 ~
 
 ## FBIP: Functional but In-Place { #sec-fbip; }

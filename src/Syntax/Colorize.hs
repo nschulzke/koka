@@ -70,7 +70,7 @@ colorize mbRangeMap env kgamma gamma fullHtml sourceName lineNo input p  | other
     do let xs = lexer sourceName lineNo input
            lexs = combineLineComments xs
        case mbRangeMap of
-         Nothing -> mapM_ (write p) (highlightLexemes id fmtHtml CtxNormal [] lexs)
+         Nothing -> mapM_ (write p) (highlightLexemes id fmtHtml CtxNormal lexs)
          Just rm -> mapM_ (write p) $ colorizeLexemes False fmtHtml (rangeMapSort rm) env [] CtxNormal lexs
 
   where
@@ -119,7 +119,7 @@ htmlFooter
 ---------------------------------------------------------------------------------------------
 
 colorizeLexemes isLiterate fmtFun rangeMap env rctx ctx lexes
-  = scan rangeMap rctx ctx lexes
+  = scan rangeMap rctx ctx (specialToKeywords lexes)
   where
     scan rangeMap rctx ctx lexes
       = case (rctx,lexes) of
@@ -158,7 +158,9 @@ transform isLiterate rng rangeMap env lexeme content
                                                       _  -> pcontent)
                  NICon tp _     -> signature env toLit isLiterate "type" qname (mangleConName qname) (pdocs $ showType env tp) $ cspan "constructor" pcontent
                  NITypeVar kind -> signature env toLit isLiterate "kind" qname qname (pdocs $ showKind env kind) $ cspan "type typevar" $ spanEffect kind pcontent
-                 NITypeCon kind _ -> signature env toLit isLiterate "kind" qname (mangleTypeName qname) (pdocs $ showKind env kind) $ cspan "type" $ spanEffect kind pcontent
+                 NITypeCon kind _ -> signature env toLit isLiterate "kind" qname (mangleTypeName qname) (pdocs $ showKind env kind) $ cspan "type" $
+                                       (case lexeme of (Lexeme _ (LexKeyword _ _)) -> cspan "keyword" pcontent  -- for 'effect' etc.
+                                                       _  -> spanEffect kind pcontent)
                  NIModule       -> signature env toLit isLiterate "module" qname (qualify qname nameNil) (pdocs $ showModule qname) (cspan "namespace" pcontent)
                  NIKind         -> span "kind" content -- todo: add pdocs?
                 )
@@ -254,10 +256,9 @@ showDoc env kgamma gamma doc
 
 showLexemes :: Env -> KGamma -> Gamma -> [Lexeme] -> [String]
 showLexemes env kgamma gamma lexs
-  = highlightLexemes fmtQualify (fmtLiterate Nothing env kgamma gamma) CtxNormal [] (fmtQualify lexs)
+  = highlightLexemes fmtQualify (fmtLiterate Nothing env kgamma gamma) CtxNormal (fmtQualify lexs)
   where
-    -- entry lexemes:
-
+    -- fixed entry lexemes (like `module std/num/float64` in documentation)
     -- type identifier
     fmtQualify [Lexeme r0 (LexKeyword ":" doc), Lexeme r1 (LexId id)]
       = [Lexeme r0 (LexKeyword ":" doc), Lexeme r1 (tryQualifyType LexId id)]
@@ -275,16 +276,19 @@ showLexemes env kgamma gamma lexs
       = [Lexeme r1 (LexTypedId id (concatMap showLexeme lexs))] -- : Lexeme r2 (LexKeyword ":" doc) : lexs
 
     fmtQualify lexs
-      = fmtQualifies lexs -- continue doing all
-
-    -- through all lexemes
+      = map fmtQualifyId lexs -- continue doing all
+{-
+    -- then qualify identifiers through all lexemes
     fmtQualifies  (l0@(Lexeme r0 (LexKeyword "import" doc)) : l1@(Lexeme r1 (LexWhite s)) : Lexeme r2 (LexId id) : lexs)
       = l0 : l1 : Lexeme r2 (LexModule id id) : fmtQualifies lexs
+    fmtQualifies  (l0@(Lexeme r0 (LexId id)) : l1@(Lexeme r1 (LexWhite s)) : l2@(Lexeme r2 (LexKeyword kw doc)) : lexs)
+      | kw `elem` ["type","struct"] && show id `elem` ["co","div","value","reference"]
+      = Lexeme r0 (LexKeyword (show id) "") : l1 : l2 : fmtQualifies lexs
     fmtQualifies (lex:lexs)
       = fmtQualifyId lex : fmtQualifies lexs
     fmtQualifies []
       = []
-
+--}
     -- single identifier
     fmtQualifyId (Lexeme r1 (LexId id))
       = Lexeme r1 (tryQualify LexId id)

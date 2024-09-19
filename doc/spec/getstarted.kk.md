@@ -35,6 +35,8 @@ implements the full specification. The main things lacking at the moment are
 
 [samples]: https://github.com/koka-lang/koka/tree/master/samples
 [rbtree]: https://github.com/koka-lang/koka/tree/master/samples/basic/rbtree.kk
+[samples-named]: https://github.com/koka-lang/koka/tree/master/samples/handlers/named
+[samples-learn]: https://github.com/koka-lang/koka/tree/master/samples/learn
 [evidence-passing]: https://www.microsoft.com/en-us/research/publication/generalized-evidence-passing-for-effect-handlers/
 [Perceus]: https://www.microsoft.com/en-us/research/publication/perceus-garbage-free-reference-counting-with-reuse/
 [releases]: https://github.com/koka-lang/koka/releases

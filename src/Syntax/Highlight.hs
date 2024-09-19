@@ -19,6 +19,7 @@ module Syntax.Highlight( Context(..), Nesting(..), Token(..), TokenComment(..)
                        , lexComment
                        , showLexeme
                        , isKeywordOp
+                       , specialToKeywords
                        ) where
 
 import Lib.Trace
@@ -123,7 +124,7 @@ fmtPrint cscheme p token _
       where
         block s = "\n" ++ s ++ "\n"
 
-        fmtLexs ctx lexs = sequence_ $ highlightLexemes id (fmtPrint cscheme p) ctx [] lexs
+        fmtLexs ctx lexs = sequence_ $ highlightLexemes id (fmtPrint cscheme p) ctx lexs
 
 
 
@@ -238,15 +239,51 @@ ctxNesting _                = 0
 highlight :: (Token Lexeme -> Lexeme -> String -> a) -> ([Lexeme] -> [Lexeme]) -> Context -> FilePath -> Int -> BString -> [a]
 highlight fmt transform ctx sourceName lineNo input
   = let xs = lexer sourceName lineNo input
-    in highlightLexemes transform fmt ctx [] (transform (combineLineComments xs))
+    in highlightLexemes transform fmt ctx (combineLineComments xs)
+
+highlightLexemes :: ([Lexeme] -> [Lexeme]) -> (Token Lexeme -> Lexeme -> String -> a) -> Context -> [Lexeme] -> [a]
+highlightLexemes transform fmt ctx0 lexemes
+  = highlightAcc ctx0 [] (transform (specialToKeywords lexemes))
+  where
+    highlightAcc ctx acc []
+      = reverse acc
+    highlightAcc ctx acc (l:ls)
+      = let (ctx', content)  = highlightLexeme transform fmt ctx l ls
+        in highlightAcc ctx' (content : acc) ls
 
 
-highlightLexemes :: ([Lexeme] -> [Lexeme]) -> (Token Lexeme -> Lexeme -> String -> a) -> Context -> [a] -> [Lexeme] -> [a]
-highlightLexemes transform fmt ctx acc []
-  = reverse acc
-highlightLexemes transform fmt ctx acc (l:ls)
-  = let (ctx', content)  = highlightLexeme transform fmt ctx l ls
-    in highlightLexemes transform fmt ctx' (content : acc) ls
+specialToKeywords ::  [Lexeme] -> [Lexeme]
+specialToKeywords  (l0@(Lexeme r0 (LexKeyword "import" doc)) : l1@(Lexeme r1 (LexWhite s)) : Lexeme r2 (LexId id) : lexs)
+  = l0 : l1 : Lexeme r2 (LexModule id id) : specialToKeywords lexs
+
+specialToKeywords  (l0@(Lexeme r0 (LexId id)) : l1@(Lexeme r1 (LexWhite s)) : l2@(Lexeme r2 (LexKeyword "type" doc)) : lexs)
+  | show id `elem` ["co","div","open","extend","value","reference"]
+  = Lexeme r0 (LexKeyword (show id) "") : l1 : l2 : specialToKeywords lexs
+specialToKeywords  (l0@(Lexeme r0 (LexId id)) : l1@(Lexeme r1 (LexWhite s)) : l2@(Lexeme r2 (LexKeyword "struct" doc)) : lexs)
+  | show id `elem` ["value","reference"]
+  = Lexeme r0 (LexKeyword (show id) "") : l1 : l2 : specialToKeywords lexs
+
+specialToKeywords  (l0@(Lexeme r0 (LexId id)) : l1@(Lexeme r1 (LexWhite s)) : l2@(Lexeme r2 (LexKeyword "effect" doc)) : lexs)
+  | show id `elem` ["linear","div","named"]
+  = Lexeme r0 (LexKeyword (show id) "") : l1 : l2 : specialToKeywords lexs
+specialToKeywords  (l0@(Lexeme r0 (LexId id0)) : l1@(Lexeme r1 (LexWhite _)) : l2@(Lexeme r2 (LexId id2)) : l3@(Lexeme r3 (LexWhite _)) : l4@(Lexeme r4 (LexKeyword "effect" doc)) : lexs)
+  | show id0 `elem` ["named"] && show id2 `elem` ["linear","div"]
+  = Lexeme r0 (LexKeyword (show id0) "") : l1 : Lexeme r2 (LexKeyword (show id2) "") : l3 : l4 : specialToKeywords lexs
+specialToKeywords  (l0@(Lexeme r0 (LexId id0)) : l1@(Lexeme r1 (LexWhite _)) : l2@(Lexeme r2 (LexId id2)) : l3@(Lexeme r3 (LexWhite _)) : l4@(Lexeme r4 (LexKeyword "effect" doc)) : lexs)
+  | show id0 == "linear" && show id2 == "div"
+  = Lexeme r0 (LexKeyword (show id0) "") : l1 : Lexeme r2 (LexKeyword (show id2) "") : l3 : l4 : specialToKeywords lexs
+
+specialToKeywords  (l0@(Lexeme r0 (LexId id)) : l1@(Lexeme r1 (LexWhite s)) : l2@(Lexeme r2 (LexKeyword "fun" doc)) : lexs)
+  | show id `elem` ["inline","noinline","fip","fbip","tail"]
+  = Lexeme r0 (LexKeyword (show id) "") : l1 : l2 : specialToKeywords lexs
+specialToKeywords  (l0@(Lexeme r0 (LexId id0)) : l1@(Lexeme r1 (LexWhite _)) : l2@(Lexeme r2 (LexId id2)) : l3@(Lexeme r3 (LexWhite _)) : l4@(Lexeme r4 (LexKeyword "fun" doc)) : lexs)
+  | show id0 `elem` ["inline","noinline"] && show id2 `elem` ["fip","fbip","tail"]
+  = Lexeme r0 (LexKeyword (show id0) "") : l1 : Lexeme r2 (LexKeyword (show id2) "") : l3 : l4 : specialToKeywords lexs
+
+specialToKeywords (lex:lexs) = lex : specialToKeywords lexs
+specialToKeywords [] = []
+
+
 
 highlightLexeme :: ([Lexeme] -> [Lexeme]) -> (Token Lexeme -> Lexeme -> String -> a) -> Context -> Lexeme -> [Lexeme] -> (Context,a)
 highlightLexeme transform fmt0 ctx0 lexeme@(Lexeme rng lex) lexs
@@ -291,7 +328,7 @@ highlightLexeme transform fmt0 ctx0 lexeme@(Lexeme rng lex) lexs
 
     showId :: Name -> String
     showId name
-      = if (nameStem name == "!" || nameLocal name == "~") then showPlain name
+      = if (nameStem name == "!" || nameLocal name == "~" || nameStem name == "()") then showPlain name
         else show name
 
     showOp :: Name -> String
@@ -309,9 +346,9 @@ highlightLexeme transform fmt0 ctx0 lexeme@(Lexeme rng lex) lexs
           ComPre  s         -> ComPre s
           ComPreBlock s     -> ComPreBlock s
           ComLine s         -> ComLine s
-          ComCode lexs s      -> ComCode (highlightLexemes transform fmt0 CtxNormal [] (transform lexs)) s
-          ComCodeBlock cls lexs s -> ComCodeBlock cls (highlightLexemes transform fmt0 CtxNormal [] (transform lexs)) s
-          ComCodeLit cls lexs s   -> ComCodeLit cls (highlightLexemes transform fmt0 CtxNormal [] (transform lexs)) s
+          ComCode lexs s      -> ComCode (highlightLexemes transform fmt0 CtxNormal (transform lexs)) s
+          ComCodeBlock cls lexs s -> ComCodeBlock cls (highlightLexemes transform fmt0 CtxNormal (transform lexs)) s
+          ComCodeLit cls lexs s   -> ComCodeLit cls (highlightLexemes transform fmt0 CtxNormal (transform lexs)) s
           ComPar            -> ComPar
           ComIndent n       -> ComIndent n
 
