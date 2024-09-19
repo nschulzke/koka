@@ -20,7 +20,7 @@ commonFlags = ["-c", "-v0", "--console=raw",
                "-O1", -- for cgen/specialize
                -- "--cc=clang",
                -- "--checkcore",
-               "-itest",   -- "-ilib",
+               "-itest",  -- "-ilib",
                "--buildtag=test", "--no-buildhash"]
 
 data Mode = Test | New | Update
