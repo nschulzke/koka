@@ -31,6 +31,7 @@ import Control.Monad (when, foldM)
 import Data.ByteString (ByteString)
 import Data.Map (Map)
 import Data.Maybe (fromJust, fromMaybe)
+import Data.List(isSuffixOf)
 import Data.Functor ((<&>))
 import qualified Data.Map as M
 import qualified Data.Text as T
@@ -145,7 +146,10 @@ fileNameFromPath fpath = do
     Nothing          -> return fpath
     Just (root,stem) -> return stem
 
+
 rebuildFile :: Maybe Flags -> Maybe Name -> J.NormalizedUri -> FilePath -> LSM (Maybe FilePath)
+rebuildFile mbFlags mbRun uri fpath | "std/core/types.kk" `isSuffixOf` fpath -- adding `types.kk` leads to persistent errors until a restart
+    = return Nothing
 rebuildFile mbFlags mbRun uri fpath
     = -- trace ("\nkoka: rebuild file: " ++ fpath) $
       do updateVFS
@@ -175,7 +179,7 @@ rebuildFile mbFlags mbRun uri fpath
             case mbRes of
               Just mbPath -> return mbPath
               Nothing     -> return Nothing
-            
+
 
 
 -- Run a build monad and emit diagnostics if needed.
