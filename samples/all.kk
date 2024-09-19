@@ -48,6 +48,7 @@ pub fun main()
   run("garsia-wachs",garsia-wachs/main)
 
   // learn
+  run("basic",learn/basic/main)
   run("contexts",contexts/main)
   run("handler",learn/handler/main)
   run("fip",fip/main)

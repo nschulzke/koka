@@ -86,7 +86,7 @@ fun example5()
 // `e2` is evaluated and passed to the result of `f(e1)`
 // while in the second form both `e1` and `e2` are evaluated
 // before calling `f`.
-pub fun main()
+fun example6()
   [21,21].foldl(0,(+)).println
 
 
@@ -103,3 +103,10 @@ fun increment2(xs) {
 fun example-trace(): ()
   trace-info("example trace")       // `trace-info` also traces the current file and line number.
   trace("module: " ++ kk-module)
+
+pub fun main()
+  example1()
+  example2()
+  example3()
+  example4()
+  example5()
