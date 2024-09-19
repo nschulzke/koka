@@ -19,11 +19,11 @@ set KOKA_ARCH=x64
 set KOKA_VSCODE=N
 
 set CLANG_REQUIRED_MAJOR=18
-set CLANG_VERSION=17.0.6
+set CLANG_VERSION=18.1.8
 set CLANG_INSTALL_BASE=LLVM-%CLANG_VERSION%-win64.exe
 set CLANG_INSTALL=%TEMP%\%CLANG_INSTALL_BASE%
 set CLANG_INSTALL_URL=https://github.com/llvm/llvm-project/releases/download/llvmorg-%CLANG_VERSION%/%CLANG_INSTALL_BASE%
-set CLANG_INSTALL_SHA256=89dc351af8e8fa1cafc6b48411e608aa9457c930a10f984aad5d21ab020165b2
+set CLANG_INSTALL_SHA256=94af030060d88cc17e9f00ef1663ebdc1126b35e16bebdfa1e807984b70abd8f
 
 rem check if %LOCALAPPDATA% was not empty
 if "%KOKA_PREFIX%" == "\koka" (set KOKA_PREFIX=c:\usr\local\koka)
@@ -449,7 +449,8 @@ del /Q "%CLANG_INSTALL%"
 goto done_clang
 
 :clang_showurl
-echo Please install clang for Windows manually from: https://github.com/llvm/llvm-project/releases/latest
+echo Please install clang for Windows manually from:
+echo   https://github.com/llvm/llvm-project/releases/latest  (Use 'LLVM-<version>-win64.exe')
 
 :done_clang
 
