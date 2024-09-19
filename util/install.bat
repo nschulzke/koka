@@ -18,12 +18,12 @@ set KOKA_PREV_PREFIX=
 set KOKA_ARCH=x64
 set KOKA_VSCODE=N
 
+set CLANG_REQUIRED_MAJOR=18
 set CLANG_VERSION=17.0.6
 set CLANG_INSTALL_BASE=LLVM-%CLANG_VERSION%-win64.exe
 set CLANG_INSTALL=%TEMP%\%CLANG_INSTALL_BASE%
 set CLANG_INSTALL_URL=https://github.com/llvm/llvm-project/releases/download/llvmorg-%CLANG_VERSION%/%CLANG_INSTALL_BASE%
 set CLANG_INSTALL_SHA256=89dc351af8e8fa1cafc6b48411e608aa9457c930a10f984aad5d21ab020165b2
-
 
 rem check if %LOCALAPPDATA% was not empty
 if "%KOKA_PREFIX%" == "\koka" (set KOKA_PREFIX=c:\usr\local\koka)
@@ -376,13 +376,38 @@ rem ---------------------------------------------------------
 rem Install clang if needed
 rem ---------------------------------------------------------
 
+set CLANG_INSTALLED_VERSION="0"
+set CLANG_INSTALLED_MAJOR="0"
+
 where /q clang-cl
-if not errorlevel 1 goto done_clang
+if errorlevel 1 goto notfound_clang
+
+for /F "tokens=3" %%x in ('clang-cl --version ^| find "clang version "') do (
+   set CLANG_INSTALLED_VERSION=%%x
+)
+for /F "tokens=1 delims=." %%x in ("%CLANG_INSTALLED_VERSION%") do (
+   set CLANG_INSTALLED_MAJOR=%%x
+)
+
+if %CLANG_INSTALLED_MAJOR% geq %CLANG_REQUIRED_MAJOR% (
+  echo Found clang-cl compiler version %CLANG_INSTALLED_VERSION%.
+  goto done_clang
+)
+
+echo.
+echo -----------------------------------------------------------------------
+echo Found clang-cl compiler version %CLANG_INSTALLED_VERSION%.
+echo It is recommended to use at least version %CLANG_REQUIRED_MAJOR% for Koka.
+goto install_clang
+
+:notfound_clang
 
 echo.
 echo -----------------------------------------------------------------------
 echo Cannot find the clang-cl compiler.
 echo A C compiler is required for Koka to function.
+
+:install_clang
 
 set KOKA_ANSWER=Y
 if "%KOKA_FORCE%" neq "Y" (
@@ -391,14 +416,14 @@ if "%KOKA_FORCE%" neq "Y" (
 if /i "%KOKA_ANSWER:~,1%" neq "Y" (
   echo Canceled automatic install.
   echo.
-  goto CLANG_SHOWURL
+  goto clang_showurl
 )
 
 echo.
 echo Downloading clang over https from:
 echo  %CLANG_INSTALL_URL%
 curl --proto =https --tlsv1.2 -f -L -o "%CLANG_INSTALL%" "%CLANG_INSTALL_URL%"
-if errorlevel 1 goto CLANG_SHOWURL
+if errorlevel 1 goto clang_showurl
 
 if "%CLANG_INSTALL_SHA256%" neq "" (
   echo Verifying sha256 hash ...
@@ -408,7 +433,7 @@ if "%CLANG_INSTALL_SHA256%" neq "" (
     echo Installation of %CLANG_INSTALL% is canceled as it does not match the
     echo expected sha256 signature: %CLANG_INSTALL_SHA256%
     echo.
-    goto CLANG_SHOWURL
+    goto clang_showurl
   )
   echo Ok.
   timeout /T 1 > nul
@@ -423,7 +448,7 @@ if not errorlevel 1 (
 del /Q "%CLANG_INSTALL%"
 goto done_clang
 
-:CLANG_SHOWURL
+:clang_showurl
 echo Please install clang for Windows manually from: https://github.com/llvm/llvm-project/releases/latest
 
 :done_clang
