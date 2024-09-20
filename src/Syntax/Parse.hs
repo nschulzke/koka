@@ -2544,13 +2544,13 @@ typeApp tp
 
 paramType :: LexParser (Name,Range,UserType)
 paramType
-  = do (id,rng) <- varid <|> wildcard <|> return (nameNil, rangeNull)
+  = do (id,rng) <- identifier <|> wildcard <|> return (nameNil, rangeNull)
        keyword ":"
        tp <- parameterType rng
        return (id,rng,tp)
 
 paramTypeX
-  = do (id,rng) <- try (do v <- varid <|> wildcard; keyword ":"; return v)
+  = do (id,rng) <- try (do v <- identifier <|> wildcard; keyword ":"; return v)
        tp <- parameterType rng
        return (id,rng,tp)
   <|>

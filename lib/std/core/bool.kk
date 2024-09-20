@@ -35,6 +35,11 @@ pub fip fun (>)( x : bool, y : bool) : bool
 pub fip fun (>=)( x : bool, y : bool) : bool
   !(x < y)
 
+pub fip fun xor( x : bool, y : bool ) : bool
+  match x
+    False -> y
+    True  -> !y
+
 // Compare two booleans with `False < True`.
 pub fip fun cmp( x : bool, y : bool) : order
   if x < y then Lt
