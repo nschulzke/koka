@@ -550,7 +550,7 @@ static inline void kk_free_local(const void* p, kk_context_t* ctx) {
   kk_free(p,ctx);
 }
 
-#if defined(__linux__) || defined(__GLIBC__)
+#if defined(__linux__) || defined(__GLIBC__) || defined(__wasi__) || defined(__EMSCRIPTEN__)
 #include <malloc.h>
 #define kk_malloc_usable_size(p)  malloc_usable_size(p)
 #elif defined(__APPLE__)
