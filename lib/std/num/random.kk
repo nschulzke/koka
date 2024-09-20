@@ -35,9 +35,9 @@ pub fun strong-random(action : () -> <random,ndet|e> a) : <ndet|e> a
 // (so we can be deterministic across architectures in results and performance).
 // It has good statistical properties and passes PractRand and Big-crush.
 // It uses a 32-bit counter to guarantee a worst-case cycle
-// of 2^32. It has a 96-bit state, so the average period is 2^127.
-// The chance of a cycle of less than 2^(32+max(96-k,0)) is 2^-(32+k),
-// (e.g. the chance of a cycle of less than 2^48 is 2^-80).
+// of 2^32^. It has a 96-bit state, so the average period is 2^127^.
+// The chance of a cycle of less than 2^(32+max(96-k,0))^ is 2^-(32+k)^,
+// (e.g. the chance of a cycle of less than 2^48^ is 2^-80^).
 // <https://pracrand.sourceforge.net/RNG_engines.txt>
 abstract value struct sfc(x:int32, y:int32, z:int32, cnt:int32)
 
@@ -67,8 +67,8 @@ pub fun sfc-init( seed : int ) : sfc
 // Uses _sfc32_ by Chris Doty-Humphrey which is a fast random
 // number generator with a 128-bit internal state which
 // passes PractRand and BigCrush. The worst case minimum cycle
-// is 2^^32^^, where a potential cycle of 2^^48^^ has a chance
-// of 2^^-80^^.
+// is 2^32^, where a potential cycle of 2^48^ has a chance
+// of 2^-80^.
 pub fun pseudo-random( seed : int, action : () -> <random|e> a) : e a
   var s := sfc-init(seed)
   with fun random-int32()
@@ -82,7 +82,7 @@ pub fun pseudo-random( seed : int, action : () -> <random|e> a) : e a
 pub fun random-bool() : random bool
   (random-int32() >= 0.int32)
 
-// Return a random integer in the range [-2^^31^^, 2^^31^^).
+// Return a random integer in the range [-2^31^, 2^31^).
 pub fun random-int() : random int
   random-int32().int
 
@@ -103,7 +103,7 @@ pub fun choose( x: a, y: a) : ndet a
 pub fun srandom-bool() : ndet bool
   (srandom-int32() >= 0.int32)
 
-// Return a strong random integer in the range [-2^^31^^, 2^^31^^).
+// Return a strong random integer in the range [-2^31^, 2^31^).
 pub fun srandom-int() : ndet int
   srandom-int32().int
 
