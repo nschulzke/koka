@@ -1344,7 +1344,11 @@ findCC paths []
   = do -- putStrLn "warning: cannot find C compiler -- default to 'gcc'"
        return ("gcc","gcc")
 findCC paths (name:rest)
-  = do mbPath <- searchPaths paths [exeExtension] name
+  = do let xpaths = paths ++ 
+                    if onWindows && name `startsWith` "clang"
+                      then ["C:/Program Files/LLVM/bin"]
+                      else []                      
+       mbPath <- searchPaths xpaths [exeExtension] name
        case mbPath of
          Nothing   -> findCC paths rest
          Just path -> return (name,path)

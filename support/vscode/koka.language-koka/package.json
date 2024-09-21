@@ -38,7 +38,7 @@
     "Programming Languages",
     "Debuggers"
   ],
-  "main": "./out/extension",
+  "main": "./out/extension.js",
   "activationEvents": [
     "workspaceContains:**/*.kk",
     "onStartupFinished"
@@ -283,15 +283,17 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npx copyfiles -V ../../../whatsnew.md support/vscode/koka.language-koka/ && vsce package",
+    "compile": "tsc",
     "watch": "tsc -w",
-    "package": "npx copyfiles -V ../../../whatsnew.md support/vscode/koka.language-koka/ && vsce package",
+    "readme": "npx copyfiles -V ../../../whatsnew.md support/vscode/koka.language-koka/",
+    "package": "vsce package",
     "publish": "vsce publish"
   },
   "devDependencies": {
     "@types/node": "^20.5.6",
     "@types/vscode": "1.85.0",
-    "@vscode/vsce": "^2.22.0",
+    "@vscode/vsce": "2.24.0",
     "@types/semver": "^7.5.6",
     "typescript": "^5.2.2",
     "copyfiles": "^2.4.1"

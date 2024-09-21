@@ -6,7 +6,6 @@ To build the extension first install nodejs/npm, then:
 $ cd support/vscode/koka.language-koka
 $ npm install
 $ npm run build
-$ npm run package
 ```
 
 and install the resulting `.vsix` extension either by right-clicking in VS code

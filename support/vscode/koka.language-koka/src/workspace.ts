@@ -224,6 +224,9 @@ function findCompilerPaths(vsConfig: vscode.WorkspaceConfiguration, developmentP
   const paths = ((process.env.PATH as string) || "").split(path.delimiter)
   if (process.env.XDG_BIN_DIR) paths.push(process.env.XDG_BIN_DIR)
   paths.push(path.join(home, '.local', 'bin'))
+  if (osGetPlatform()==="windows" && process.env.LOCALAPPDATA) {
+    paths.push(path.join(process.env.LOCALAPPDATA,"koka","bin"))    
+  }
 
   for (const p of paths) {
     if (fs.existsSync(path.join(p, kokaExeName))) {
