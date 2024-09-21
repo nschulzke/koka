@@ -241,8 +241,8 @@ if errorlevel 1 (
   echo Unpacking error: %ERRORLEVEL%
   echo.
   echo Perhaps Koka is in use by VS Code or another process?
-  echo Or perhaps uninstall a previous version manually first? Use:
-  echo   curl -sSL -o %%tmp%%\install-koka.bat https://github.com/koka-lang/koka/releases/download/%KOKA_VERSION%/install.bat ^&^& %%tmp%%\install-koka.bat --uninstall
+  rem echo Or perhaps uninstall a previous version manually first? Use:
+  rem echo   curl -sSL -o %%tmp%%\install-koka.bat https://github.com/koka-lang/koka/releases/download/%KOKA_VERSION%/install.bat ^&^& %%tmp%%\install-koka.bat --uninstall
   goto end
 )
 
@@ -387,11 +387,17 @@ rem ---------------------------------------------------------
 
 set CLANG_INSTALLED_VERSION="0"
 set CLANG_INSTALLED_MAJOR="0"
+set CLANG_EXE=clang-cl
 
-where /q clang-cl
-if errorlevel 1 goto clang_notfound
+where /q %CLANG_EXE%
+if not errorlevel 1 goto clang_found
 
-for /F "tokens=3" %%x in ('clang-cl --version ^| find "clang version "') do (
+set CLANG_EXE=C:\Progra~1\LLVM\bin\clang-cl.exe
+if exist %CLANG_EXE% goto clang_found
+goto clang_notfound
+
+:clang_found
+for /F "tokens=3" %%x in ('%CLANG_EXE% --version ^| find "clang version "') do (
    set CLANG_INSTALLED_VERSION=%%x
 )
 for /F "tokens=1 delims=." %%x in ("%CLANG_INSTALLED_VERSION%") do (
@@ -399,13 +405,13 @@ for /F "tokens=1 delims=." %%x in ("%CLANG_INSTALLED_VERSION%") do (
 )
 
 if %CLANG_INSTALLED_MAJOR% geq %CLANG_REQUIRED_MAJOR% (
-  echo Found clang-cl compiler version %CLANG_INSTALLED_VERSION%.
+  echo Found %CLANG_EXE% compiler version %CLANG_INSTALLED_VERSION%.
   goto clang_done
 )
 
 echo.
 echo -----------------------------------------------------------------------
-echo Found clang-cl compiler version %CLANG_INSTALLED_VERSION%.
+echo Found clang compiler version %CLANG_INSTALLED_VERSION%.
 echo It is recommended to use at least version %CLANG_REQUIRED_MAJOR% for Koka.
 goto clang_install
 
@@ -467,7 +473,10 @@ rem ---------------------------------------------------------
 rem Install Visual Studio Build tools if needed
 rem ---------------------------------------------------------
 
-if exist "C:\Program Files (x86)\Microsoft Visual Studio" goto vs_done
+if exist "C:\Program Files (x86)\Microsoft Visual Studio" (
+  echo Found Microsoft Visual Studio build tools.
+  goto vs_done
+)
 
 echo.
 echo -----------------------------------------------------------------------
