@@ -132,7 +132,7 @@ Unix. The following programs are required to build Koka:
 * Optional: [nodejs](http://nodejs.org) if using the Javascript backend.
 * Optional: [emscripten] and [wasmtime] if using the Wasm backend.
 * Optional: On Windows it is recommended to install the [clang][winclang] C compiler (use `LLVM-<version>-win64.exe`), or the [Visual Studio](https://visualstudio.microsoft.com/downloads/) C compiler.
-* On Windows, first set the console codepage to UTF8 to avoid build errors with stack: `$ chcp 65001`.
+* On Windows, first set the console codepage to UTF8 to avoid build errors with stack: **`$ chcp 65001`**.
 
 Now clone the repository and build the compiler as:
 
@@ -140,27 +140,28 @@ Now clone the repository and build the compiler as:
 $ git clone --recursive https://github.com/koka-lang/koka
 $ cd koka
 $ stack update
-$ stack build
+$ stack build --fast
 $ stack exec koka
 ```
 
 (Note: if you forgot to pass `--recursive` on cloning, you will get errors when compiling Koka modules --
 you can correct this by running `git submodule update --init --recursive`).
 
-You can also use `stack build --fast` to build a debug version of the compiler,
-and use `stack test --fast` to run the test-suite.
-
-To run a single test you can run stack test filtering based on paths such as `stack test --test-arguments '-m "lib"'`.
+To run all tests, use `stack test --fast`. To run a single test you can run stack test 
+filtering based on paths such as `stack test --fast --test-arguments="--match /lib"`.
 This will run all tests that are under the `test/lib` directory.
+
+You can also use `stack build` without the `--fast` flag to build an optimized version of the compiler.
 
 (See the [build notes](#build-notes) below if you have issues when running- or installing `stack`).
 
 ## Create an Install Bundle
 
 Koka can generate a binary install bundle that can be installed
-on the local machine:
+on the local machine (use a build without `--fast` in that case):
 
 ```sh
+$ stack build
 $ stack exec koka -- -e util/bundle
 ...
 distribution bundle created.

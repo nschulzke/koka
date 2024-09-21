@@ -25,6 +25,10 @@ set CLANG_INSTALL=%TEMP%\%CLANG_INSTALL_BASE%
 set CLANG_INSTALL_URL=https://github.com/llvm/llvm-project/releases/download/llvmorg-%CLANG_VERSION%/%CLANG_INSTALL_BASE%
 set CLANG_INSTALL_SHA256=94af030060d88cc17e9f00ef1663ebdc1126b35e16bebdfa1e807984b70abd8f
 
+set VS_VERSION=2022
+set VS_INSTALL_CMD=winget install Microsoft.VisualStudio.%VS_VERSION%.BuildTools --force --override "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.Windows11SDK.22000"
+
+
 rem check if %LOCALAPPDATA% was not empty
 if "%KOKA_PREFIX%" == "\koka" (set KOKA_PREFIX=c:\usr\local\koka)
 
@@ -139,6 +143,7 @@ if "%KOKA_PREV_PREFIX%" == "" goto prev_none
 set KOKA_PREV_PREFIX=%KOKA_PREV_PREFIX:\bin\koka.exe=%
 for /F "tokens=*" %%x in ('koka --version 2^> nul ^| find "version: "') do (set KOKA_PREV_VERSION=%%x)
 if "%KOKA_PREV_VERSION%" neq "" (set KOKA_PREV_VERSION=v%KOKA_PREV_VERSION:version: =%)
+echo Found previous version: %KOKA_PREV_VERSION% at %KOKA_PREV_PREFIX%
 :prev_none
 
 rem ---------------------------------------------------------
@@ -233,7 +238,11 @@ if not exist %KOKA_PREFIX% (
 echo - unpacking..
 tar -xzf "%KOKA_DIST_SOURCE%" -C "%KOKA_PREFIX%"
 if errorlevel 1 (
-  echo "Unpacking error: %ERRORLEVEL%"
+  echo Unpacking error: %ERRORLEVEL%
+  echo.
+  echo Perhaps Koka is in use by VS Code or another process?
+  echo Or perhaps uninstall a previous version manually first? Use:
+  echo   curl -sSL -o %%tmp%%\install-koka.bat https://github.com/koka-lang/koka/releases/download/%KOKA_VERSION%/install.bat ^&^& %%tmp%%\install-koka.bat --uninstall
   goto end
 )
 
@@ -380,7 +389,7 @@ set CLANG_INSTALLED_VERSION="0"
 set CLANG_INSTALLED_MAJOR="0"
 
 where /q clang-cl
-if errorlevel 1 goto notfound_clang
+if errorlevel 1 goto clang_notfound
 
 for /F "tokens=3" %%x in ('clang-cl --version ^| find "clang version "') do (
    set CLANG_INSTALLED_VERSION=%%x
@@ -391,23 +400,23 @@ for /F "tokens=1 delims=." %%x in ("%CLANG_INSTALLED_VERSION%") do (
 
 if %CLANG_INSTALLED_MAJOR% geq %CLANG_REQUIRED_MAJOR% (
   echo Found clang-cl compiler version %CLANG_INSTALLED_VERSION%.
-  goto done_clang
+  goto clang_done
 )
 
 echo.
 echo -----------------------------------------------------------------------
 echo Found clang-cl compiler version %CLANG_INSTALLED_VERSION%.
 echo It is recommended to use at least version %CLANG_REQUIRED_MAJOR% for Koka.
-goto install_clang
+goto clang_install
 
-:notfound_clang
+:clang_notfound
 
 echo.
 echo -----------------------------------------------------------------------
 echo Cannot find the clang-cl compiler.
 echo A C compiler is required for Koka to function.
 
-:install_clang
+:clang_install
 
 set KOKA_ANSWER=Y
 if "%KOKA_FORCE%" neq "Y" (
@@ -446,13 +455,53 @@ if not errorlevel 1 (
   set "PATH=%PATH%;C:\Program Files\LLVM\bin"
 )
 del /Q "%CLANG_INSTALL%"
-goto done_clang
+goto clang_done
 
 :clang_showurl
 echo Please install clang for Windows manually from:
 echo   https://github.com/llvm/llvm-project/releases/latest  (Use 'LLVM-<version>-win64.exe')
 
-:done_clang
+:clang_done
+
+rem ---------------------------------------------------------
+rem Install Visual Studio Build tools if needed
+rem ---------------------------------------------------------
+
+if exist "C:\Program Files (x86)\Microsoft Visual Studio" goto vs_done
+
+echo.
+echo -----------------------------------------------------------------------
+echo Cannot find the Windows Visual Studio build tools.
+echo The build tools are required for Koka to compile to native code on Windows.
+
+where /q winget
+if errorlevel 1 goto vs_showurl
+
+set KOKA_ANSWER=Y
+if "%KOKA_FORCE%" neq "Y" (
+  set /p "KOKA_ANSWER=Would you like to download and install the Microsoft Visual Studio %VS_VERSION% build tools for Windows? [Yn] "
+)
+if /i "%KOKA_ANSWER:~,1%" neq "Y" (
+  echo Canceled build tools install.
+  echo.
+  goto vs_showurl
+)
+
+echo Installing Microsoft Visual Studio %VS_VERSION% build tools using 'winget': 
+echo   %VS_INSTALL_CMD%
+%VS_INSTALL_CMD%
+
+goto vs_done
+
+:vs_showurl
+echo Please install Microsoft Visual Studio manually from:
+echo   https://visualstudio.microsoft.com/downloads   (Install at least the C/C++ compiler)
+echo.
+echo Or try using 'winget' from the command prompt as:
+echo   %VS_INSTALL_CMD%
+echo.
+
+:vs_done
 
 rem ---------------------------------------------------------
 rem End
