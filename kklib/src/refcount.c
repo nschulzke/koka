@@ -7,10 +7,14 @@
 ---------------------------------------------------------------------------*/
 #include "kklib.h"
 
-// static void kk_block_drop_free_delayed(kk_context_t* ctx);
-// static kk_decl_noinline void kk_block_drop_free_rec(kk_block_t* b, kk_ssize_t scan_fsize, const kk_ssize_t depth, kk_context_t* ctx);
+// Decrement ref count without free-ing
+static bool kk_block_decref_no_free(kk_block_t* b);
+
+// Drop the children of a block recursively
 static kk_decl_noinline void kk_block_drop_free_recx(kk_block_t* b, kk_context_t* ctx);
 
+
+// Free a raw block (by calling the C function pointer in the first field)
 static void kk_block_free_raw(kk_block_t* b, kk_context_t* ctx) {
   kk_assert_internal(kk_tag_is_raw(kk_block_tag(b)));
   struct kk_cptr_raw_s* raw = (struct kk_cptr_raw_s*)b;  // all raw structures must overlap this!
@@ -19,19 +23,64 @@ static void kk_block_free_raw(kk_block_t* b, kk_context_t* ctx) {
   }
 }
 
-// Free a block and recursively decrement reference counts on children.
-static void kk_block_drop_free(kk_block_t* b, kk_context_t* ctx) {
+// Check if a field `i` in a block `b` should be freed, i.e. it is heap allocated with a refcount of 0 (after rc decref).
+static inline kk_block_t* kk_block_fast_field_should_free(kk_block_t* b, kk_ssize_t field, kk_context_t* ctx) {
+  kk_box_t v = kk_block_field(b, field);
+  if (kk_box_is_non_null_ptr(v)) {
+    kk_block_t* child = kk_ptr_unbox(v, ctx);
+    kk_assert_internal(kk_block_is_valid(child));
+    if (kk_block_decref_no_free(child)) {
+      return child;
+    }
+  }
+  return NULL;
+}
+
+// Try to free a block and drop its children for the common fast path.
+// Return `NULL` if succesful, and otherwise a pointer to a block that needs to be
+// freed next (which can be done by `kk_block_drop_free_recx`)
+static kk_block_t* kk_block_fast_drop_free(kk_block_t* b, kk_context_t* ctx) {
+tailcall:
   kk_assert_internal(kk_block_refcount(b) == 0);
   const kk_ssize_t scan_fsize = b->header.scan_fsize;
-  if (scan_fsize==0) {
-    // TODO: can we avoid raw object tests?
-    if kk_unlikely(kk_tag_is_raw(kk_block_tag(b))) { kk_block_free_raw(b,ctx); }
-    kk_block_free(b,ctx); // deallocate directly if nothing to scan
+  if (scan_fsize == 0) {
+    // free directly
+    if (kk_tag_is_raw(kk_block_tag(b))) {  // raw blocks are freed specially
+      kk_block_free_raw(b, ctx);
+    }
+    else {
+      kk_block_free(b, ctx);
+    }
+  }
+  else if (scan_fsize == 1) {
+    // if just one field, we can free directly and continue with the child
+    kk_block_t* next = kk_block_fast_field_should_free(b, 0, ctx);
+    kk_block_free(b, ctx);
+    if (next != NULL) {
+      b = next;
+      goto tailcall;
+    }
+  }
+  else if (scan_fsize == 2 && !kk_box_is_non_null_ptr(kk_block_field(b, 0))) {
+    // fast path for lists/nodes with boxed first element
+    kk_block_t* next = kk_block_fast_field_should_free(b, 1, ctx);
+    kk_block_free(b, ctx);
+    if (next != NULL) {
+      b = next;
+      goto tailcall;
+    }
   }
   else {
+    return b;
+  }
+  return NULL;
+}
+
+// Free a block and recursively decrement reference counts on children.
+static void kk_block_drop_free(kk_block_t* b, kk_context_t* ctx) {
+  b = kk_block_fast_drop_free(b, ctx);
+  if (b != NULL) {
     kk_block_drop_free_recx(b, ctx); // free recursively
-    // TODO: for performance unroll one iteration for scan_fsize == 1
-    // and scan_fsize == 2 with the first field an non-ptr ?
   }
 }
 
@@ -138,7 +187,7 @@ kk_decl_noinline void kk_block_check_drop(kk_block_t* b, kk_refcount_t rc0, kk_c
   if kk_likely(rc0==0) {
     kk_block_drop_free(b, ctx);  // no more references, free it.
   }
-  else if kk_unlikely(rc0 <= RC_STICKY_DROP) {
+  else if (rc0 <= RC_STICKY_DROP) {
     // sticky: do not drop further
   }
   else {
@@ -240,21 +289,23 @@ static bool kk_block_decref_no_free(kk_block_t* b) {
 
 // Check if a field `i` in a block `b` should be freed, i.e. it is heap allocated with a refcount of 0.
 // Optimizes by already freeing leaf blocks that are heap allocated but have no scan fields.
-
 static inline kk_block_t* kk_block_field_should_free(kk_block_t* b, kk_ssize_t field, kk_context_t* ctx) {
   kk_box_t v = kk_block_field(b, field);
   if (kk_box_is_non_null_ptr(v)) {
-    kk_block_t* child = kk_ptr_unbox(v,ctx);
+    kk_block_t* child = kk_ptr_unbox(v, ctx);
     kk_assert_internal(kk_block_is_valid(child));
     if (kk_block_decref_no_free(child)) {
+      return kk_block_fast_drop_free(child, ctx);
+      /*
       uint8_t v_scan_fsize = child->header.scan_fsize;
       if (v_scan_fsize == 0) { // free leaf nodes directly and pretend it was not a ptr field
-        if kk_unlikely(kk_tag_is_raw(kk_block_tag(child))) { kk_block_free_raw(child,ctx); }  // potentially call custom `free` function on the data
-        kk_block_free(child,ctx);
+        if kk_unlikely(kk_tag_is_raw(kk_block_tag(child))) { kk_block_free_raw(child, ctx); }  // potentially call custom `free` function on the data
+        kk_block_free(child, ctx);
       }
       else {
         return child;
       }
+      */
     }
   }
   return NULL;
@@ -286,6 +337,7 @@ static kk_decl_noinline void kk_block_drop_free_large_rec(kk_block_t* b, kk_cont
 static kk_decl_noinline void kk_block_drop_free_recx(kk_block_t* b, kk_context_t* ctx)
 {
   kk_assert_internal(b->header.scan_fsize > 0);
+  kk_assert_internal(!kk_block_is_no_free(b));
   kk_block_t* parent = NULL;
   uint8_t scan_fsize;
   uint8_t i; // current field
@@ -296,6 +348,7 @@ static kk_decl_noinline void kk_block_drop_free_recx(kk_block_t* b, kk_context_t
     scan_fsize = b->header.scan_fsize;
     kk_assert_internal(kk_block_refcount(b) == 0);
     kk_assert_internal(scan_fsize > 0);           // due to kk_block_should_free
+    kk_assert_internal(!kk_block_is_no_free(b));  // due to kk_block_should_free
     if (scan_fsize == 1) {
       // if just one field, we can free directly and continue with the child
       kk_block_t* next = kk_block_field_should_free(b, 0, ctx);
@@ -703,22 +756,34 @@ kk_decl_export void kk_box_mark_shared_recx(kk_box_t b, kk_context_t* ctx) {
   }
 }
 
+
+
 /*--------------------------------------------------------------------------------------
-  TRMC: copy a context following the context path indicated in the _field_idx.
+  Block copy is only possible if we can know the size of allocated blocks (`kk_malloc_usable_size`)
 --------------------------------------------------------------------------------------*/
 
-#if defined(KK_HAS_MALLOC_COPY)
-static kk_block_t* kk_block_alloc_copy( kk_block_t* b, kk_context_t* ctx ) {
-  kk_block_t* c = (kk_block_t*)kk_malloc_copy(b,ctx);
-  kk_block_refcount_set(c,0);
-  for( kk_ssize_t i = 0; i < kk_block_scan_fsize(b); i++) {
+kk_decl_export void* kk_malloc_copy(const void* p, kk_context_t* ctx) {
+  const size_t size = kk_malloc_usable_size((void*)p);
+  void* q = kk_malloc(kk_to_ssize_t(size), ctx);
+  memcpy(q, p, size);
+  return q;
+}
+
+kk_decl_export kk_block_t* kk_block_alloc_copy(kk_block_t* b, kk_context_t* ctx) {
+  kk_block_t* c = (kk_block_t*)kk_malloc_copy(b, ctx);
+  kk_block_refcount_set(c, 0);
+  for (kk_ssize_t i = 0; i < kk_block_scan_fsize(b); i++) {
     kk_box_dup(kk_block_field(c, i), ctx);
   }
   return c;
 }
-#endif
 
-#if !defined(KK_CCTX_NO_CONTEXT_PATH)
+
+
+/*--------------------------------------------------------------------------------------
+  TRMC: copy a context following the context path indicated in the _field_idx.
+--------------------------------------------------------------------------------------*/
+
 kk_decl_export kk_decl_noinline kk_box_t kk_cctx_copy(kk_box_t res, kk_box_t* holeptr, kk_box_t** newholeptr, kk_context_t * ctx) {
   kk_assert_internal(!kk_block_is_unique(kk_ptr_unbox(res, ctx)));
   kk_box_t  cres = kk_box_null();     // copied result context
@@ -753,8 +818,7 @@ kk_decl_export kk_decl_noinline kk_box_t kk_cctx_copy_apply(kk_box_t res, kk_box
   return cres;
 }
 
-#else
-
+/*
 kk_decl_export kk_decl_noinline kk_box_t kk_cctx_copy(kk_box_t res, kk_box_t* holeptr, kk_box_t** newholeptr, kk_context_t * ctx) {
   kk_assert_internal(false);
   *newholeptr = holeptr;
@@ -765,5 +829,4 @@ kk_decl_export kk_decl_noinline kk_box_t kk_cctx_copy_apply(kk_box_t res, kk_box
   kk_assert_internal(false);
   return res;
 }
-
-#endif
+*/
