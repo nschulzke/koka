@@ -725,16 +725,16 @@ dupDropFun isDup tp mbConRepr mbScanCount arg
 exprIsNotRefcounted :: Expr -> Parc Bool
 exprIsNotRefcounted expr
   = case expr of
-      TypeApp body targs
-        -> exprIsNotRefcounted body
-      TypeLam tpar body
-        -> exprIsNotRefcounted body
-      Lam{}
-        -> return (tnamesIsEmpty (freeLocals expr))  -- will become a static function
+      -- TypeApp body targs
+      --  -> exprIsNotRefcounted body
+      -- TypeLam tpar body
+      --  -> exprIsNotRefcounted body
+      -- Lam{}
+      --  -> return (tnamesIsEmpty (freeLocals expr))  -- will become a static function (only if not using a compressed heap!)
+      -- Var v info                             -- static function etc.
+      --  -> return (not (infoIsRefCounted info))
       Lit (LitInt i)
         -> return (i >= -8191 && i <= 8191)  -- 14 bits is safe on every platform
-      Var v info                             -- static function etc.
-        -> return (not (infoIsRefCounted info))
       _ -> not <$> needsDupDrop (typeOf expr)
 
 

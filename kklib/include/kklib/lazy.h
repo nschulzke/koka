@@ -29,13 +29,14 @@ static inline bool kk_datatype_is_lazy( kk_datatype_t d_borrow, kk_context_t* ct
   return kk_block_is_lazy(kk_datatype_as_ptr(d_borrow,ctx));
 }
 
-// `forall<e,a> ( x : a, ^eval: a -> e a) -> e a`. For now `e` must be at most `<div>` as we
+// `forall<e,a> ( x : a, eval: a -> e a) -> e a`. For now `e` must be at most `<div>` as we
 // don't support yielding from the lazy constructor function (yet).
-kk_decl_export kk_datatype_t kk_datatype_lazy_eval(kk_datatype_t d, kk_function_t eval_borrow, kk_context_t* ctx);
+kk_decl_export kk_datatype_t kk_datatype_lazy_eval(kk_datatype_t d, kk_function_t eval, kk_context_t* ctx);
 
-static inline kk_datatype_t kk_datatype_lazy_force(kk_datatype_t d, kk_function_t eval_borrow, kk_context_t* ctx) {
-  if (!kk_datatype_is_lazy(d, ctx)) return d;  
-                               else return kk_datatype_lazy_eval(d, eval_borrow, ctx);
+// todo: for efficiency, we assume `eval` is static (and thus needs no drop)
+static inline kk_datatype_t kk_datatype_lazy_force(kk_datatype_t d, kk_function_t eval, kk_context_t* ctx) {
+  if (!kk_datatype_is_lazy(d, ctx)) { kk_function_static_drop(eval,ctx); return d; }
+                               else return kk_datatype_lazy_eval(d, eval, ctx);
 }
 
 
@@ -43,12 +44,12 @@ static inline bool kk_is_lazy( kk_box_t d_borrow, kk_context_t* ctx) {
   return kk_datatype_is_lazy(kk_datatype_unbox(d_borrow),ctx);
 }
 
-static inline kk_box_t kk_lazy_eval( kk_box_t d, kk_function_t eval_borrow, kk_context_t* ctx) {
-  return kk_datatype_box(kk_datatype_lazy_eval(kk_datatype_unbox(d),eval_borrow,ctx));
+static inline kk_box_t kk_lazy_eval( kk_box_t d, kk_function_t eval, kk_context_t* ctx) {
+  return kk_datatype_box(kk_datatype_lazy_eval(kk_datatype_unbox(d),eval,ctx));
 }
 
-static inline kk_box_t kk_lazy_force(kk_box_t d, kk_function_t eval_borrow, kk_context_t* ctx) {
-  return kk_datatype_box(kk_datatype_lazy_force(kk_datatype_unbox(d),eval_borrow,ctx));
+static inline kk_box_t kk_lazy_force(kk_box_t d, kk_function_t eval, kk_context_t* ctx) {
+  return kk_datatype_box(kk_datatype_lazy_force(kk_datatype_unbox(d),eval,ctx));
 }
 
 

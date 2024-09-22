@@ -35,7 +35,7 @@ pub infixr 20  (||)
 // prefix     (!), (-)
 
 
-// build: 141
+// build: 142
 
 // ----------------------------------------------------------------------------
 // Core types
@@ -448,7 +448,7 @@ pub value type @optional<a>
 
 
 // Force lazy constructors
-pub inline extern force( x : a, ^eval : a -> e a ) : e a
+pub inline extern force( x : a, eval : a -> e a ) : e a
   c "kk_lazy_force"
 
 pub inline extern is-lazy( ^x : a ) : bool

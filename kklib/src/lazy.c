@@ -10,29 +10,28 @@
 #include "kklib/lazy.h"
 
 // Eval lazy value that is unique
-// Since the `eval_borrow` is generated and does not give direct access to the argument
-// (which is immediately matched against lazy constructors) we cannot recurse on 
-// it and we do not have to create a blackhole or indirections (since the result 
+// Since the `eval` is generated and does not give direct access to the argument
+// (which is immediately matched against lazy constructors) we cannot recurse on
+// it and we do not have to create a blackhole or indirections (since the result
 // is not shared we can return it as-is).
-static kk_datatype_t kk_lazy_eval_unique(kk_block_t* b, kk_function_t eval_borrow, kk_context_t* ctx)
+static kk_datatype_t kk_lazy_eval_unique(kk_block_t* b, kk_function_t eval, kk_context_t* ctx)
 {
   kk_assert(kk_block_is_valid(b));
   kk_assert(kk_block_is_unique(b));
   kk_assert(!kk_block_is_blackhole(b));  // unique lazy value cannot result in a black hole (?)
-                                         // (as long as we always use the generated eval_borrow function which does not give access to the value itself?)
+                                         // (as long as we always use the generated eval function which does not give access to the value itself?)
   // evaluate
-  kk_function_dup(eval_borrow, ctx);
-  return kk_datatype_unbox(kk_function_call(kk_box_t, (kk_function_t, kk_box_t, kk_context_t*), eval_borrow, (eval_borrow, kk_block_box(b, ctx), ctx), ctx));
+  return kk_datatype_unbox(kk_function_call(kk_box_t, (kk_function_t, kk_box_t, kk_context_t*), eval, (eval, kk_block_box(b, ctx), ctx), ctx));
 }
 
 
 // Eval lazy value that is not uniquely referenced but not thread-shared
-// 
-// Note: we always create an indirection node for now. However, if we can somehow 
-// ensure the result of the `eval_borrow` function reuses the argument we could avoid
+//
+// Note: we always create an indirection node for now. However, if we can somehow
+// ensure the result of the `eval` function reuses the argument we could avoid
 // allocation in many cases. However, we must prevent reuse of the argument for anything
 // else than the result which seems quite difficult to guaratee at compile-time?
-static kk_datatype_t kk_lazy_eval_local(kk_block_t* b, kk_function_t eval_borrow, kk_context_t* ctx)
+static kk_datatype_t kk_lazy_eval_local(kk_block_t* b, kk_function_t eval, kk_context_t* ctx)
 {
   kk_assert(kk_block_is_valid(b));
   kk_assert(!kk_block_is_thread_shared(b));
@@ -50,8 +49,7 @@ static kk_datatype_t kk_lazy_eval_local(kk_block_t* b, kk_function_t eval_borrow
   b->header.scan_fsize = 0;
 
   // evaluate
-  kk_function_dup(eval_borrow, ctx);
-  kk_datatype_t res = kk_datatype_unbox(kk_function_call(kk_box_t, (kk_function_t, kk_box_t, kk_context_t*), eval_borrow, (eval_borrow,kk_block_box(x, ctx),ctx), ctx));
+  kk_datatype_t res = kk_datatype_unbox(kk_function_call(kk_box_t, (kk_function_t, kk_box_t, kk_context_t*), eval, (eval,kk_block_box(x, ctx),ctx), ctx));
 
   // TODO: support yielding
   // we need to create some minimal support in the runtime (from `hnd.c`) to have `yield_extend` available.
@@ -68,7 +66,7 @@ static kk_datatype_t kk_lazy_eval_local(kk_block_t* b, kk_function_t eval_borrow
 }
 
 // Eval a thread-shared value.
-static kk_datatype_t kk_lazy_eval_thread_shared(kk_block_t* b, kk_function_t eval_borrow, kk_context_t* ctx) {
+static kk_datatype_t kk_lazy_eval_thread_shared(kk_block_t* b, kk_function_t eval, kk_context_t* ctx) {
   // TODO!
   // The code is the same as for `local` but now atomically.
   // The idea is to duplicate the block `b` and evaluate that (with an rc of 1)
@@ -77,10 +75,12 @@ static kk_datatype_t kk_lazy_eval_thread_shared(kk_block_t* b, kk_function_t eva
   // tricky: if we don't have a double word atomic compare-and-swap, we need a way
   // to set it to a blackhole atomically while also initializing the wait-list field.
   // We can use the special `KK_TAG_LAZY_PREP` for that?
-  return kk_lazy_eval_local(b, eval_borrow, ctx);
+  return kk_lazy_eval_local(b, eval, ctx);
 }
 
-kk_decl_export kk_datatype_t kk_datatype_lazy_eval(kk_datatype_t next, kk_function_t eval_borrow, kk_context_t* ctx)
+
+// note: we assume `eval` is static for efficiency (so `dup`/`drop` are no-ops in the usual case)
+kk_decl_export kk_datatype_t kk_datatype_lazy_eval(kk_datatype_t next, kk_function_t eval, kk_context_t* ctx)
 {
   kk_assert(kk_datatype_is_lazy(next, ctx));
   do {
@@ -98,19 +98,20 @@ kk_decl_export kk_datatype_t kk_datatype_lazy_eval(kk_datatype_t next, kk_functi
       }
     }
     else {
+      kk_function_static_dup(eval,ctx);
       if (rc == 0) {
         // evaluate unique value
-        next = kk_lazy_eval_unique(b, eval_borrow, ctx);
+        next = kk_lazy_eval_unique(b, eval, ctx);
       }
       else if kk_unlikely(kk_refcount_is_thread_shared(rc)) {
         // evaluate thread shared
-        next = kk_lazy_eval_thread_shared(b, eval_borrow, ctx);
+        next = kk_lazy_eval_thread_shared(b, eval, ctx);
       }
       else {
         // evaluate thread local
-        next = kk_lazy_eval_local(b, eval_borrow, ctx);
+        next = kk_lazy_eval_local(b, eval, ctx);
       }
-      // TODO: support yielding from `eval_borrow`
+      // TODO: support yielding from `eval`
       // we need to create some minimal support in the runtime (from `hnd.c`) to have `yield_extend` available.
       if kk_yielding(ctx) {
         kk_fatal_error(ENOTSUP, "yielding from inside a lazy constructor is currently not supported");
@@ -119,5 +120,6 @@ kk_decl_export kk_datatype_t kk_datatype_lazy_eval(kk_datatype_t next, kk_functi
     }
     // recursively force the result
   } while(kk_datatype_is_lazy(next, ctx));
+  kk_function_static_drop(eval,ctx);
   return next;
 }

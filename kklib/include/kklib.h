@@ -9,7 +9,7 @@
   found in the LICENSE file at the root of this distribution.
 ---------------------------------------------------------------------------*/
 
-#define KKLIB_BUILD          153    // modify on changes to trigger recompilation..
+#define KKLIB_BUILD          154    // modify on changes to trigger recompilation..
 // #define KK_DEBUG_FULL       1    // set to enable full internal debug checks
 
 // Includes
@@ -1284,6 +1284,9 @@ static inline kk_decl_const kk_unit_t kk_unit_unbox(kk_box_t u) {
   struct kk_function_s* const _##name = &_static_##name; \
   kk_function_t name = { (kk_intb_t)_##name }; \
   if (kk_box_eq(_##name->fun,kk_box_null())) { _##name->fun = kk_kkfun_ptr_box(&cfun,ctx); }  // initialize on demand we can encode the field */
+
+#define kk_function_static_dup(fun,ctx)   (fun)
+#define kk_function_static_drop(fun,ctx)  kk_unused(fun)
 #else
 // for a compressed heap, allocate static functions once in the heap on demand; these are never deallocated
 #define kk_define_static_function(name,cfun,ctx) \
@@ -1293,6 +1296,8 @@ static inline kk_decl_const kk_unit_t kk_unit_unbox(kk_box_t u) {
     _fun->fun = kk_kkfun_ptr_box(&cfun, ctx); \
     name = kk_datatype_from_base(_fun,ctx); \
   }
+#define kk_function_static_dup(fun,ctx)   kk_function_dup(fun,ctx)
+#define kk_function_static_drop(fun,ctx)  kk_function_drop(fun,ctx)
 #endif
 
 

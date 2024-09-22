@@ -796,7 +796,7 @@ infoIsLocal info
   = case info of
       InfoNone       -> True
       InfoReuse{}    -> True
-      InfoArity{}    -> False      -- (todo: is this also the case for compressed pointers?)
+      InfoArity{}    -> False      -- todo: is this also the case for compressed pointers?
       InfoExternal{} -> False
       InfoConField{} -> False
 
