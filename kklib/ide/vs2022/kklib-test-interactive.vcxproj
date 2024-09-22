@@ -185,8 +185,8 @@
     <ClCompile Include="..\..\..\.koka\debug\std_core_undiv.c" />
     <ClCompile Include="..\..\..\.koka\debug\std_core_unsafe.c" />
     <ClCompile Include="..\..\..\.koka\debug\std_core_vector.c" />
-    <ClCompile Include="..\..\..\.koka\debug\test_cgen_box4.c" />
-    <ClCompile Include="..\..\..\.koka\debug\test_cgen_box4__main.c" />
+    <ClCompile Include="..\..\..\.koka\debug\test_lazy_lazy1.c" />
+    <ClCompile Include="..\..\..\.koka\debug\test_lazy_lazy1__main.c" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="kklib.natvis" />

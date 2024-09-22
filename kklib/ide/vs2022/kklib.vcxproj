@@ -212,6 +212,7 @@
     <ClCompile Include="..\..\src\bits.c" />
     <ClCompile Include="..\..\src\box.c" />
     <ClCompile Include="..\..\src\bytes.c" />
+    <ClCompile Include="..\..\src\lazy.c" />
     <ClCompile Include="..\..\src\os.c" />
     <ClCompile Include="..\..\src\process.c" />
     <ClCompile Include="..\..\src\random.c" />
@@ -232,6 +233,7 @@
     <ClInclude Include="..\..\include\kklib\bits.h" />
     <ClInclude Include="..\..\include\kklib\box.h" />
     <ClInclude Include="..\..\include\kklib\bytes.h" />
+    <ClInclude Include="..\..\include\kklib\lazy.h" />
     <ClInclude Include="..\..\include\kklib\maybe.h" />
     <ClInclude Include="..\..\include\kklib\os.h" />
     <ClInclude Include="..\..\include\kklib\platform.h" />

@@ -75,7 +75,7 @@ static inline kk_ddigit_t ddigit_mul_add(kk_digit_t x, kk_digit_t y, kk_digit_t 
   return r;
 }
 
-#elif (KK_INTPTR_SIZE >= 8) && defined(__GNUC__)
+#elif (KK_INTPTR_SIZE >= 8) && defined(__GNUC__) && defined(__SIZEOF_INT128__)
 // Use 64-bit digits with gcc/clang/icc
 #define BASE          KK_I64(1000000000000000000)
 #define LOG_BASE      (18)

@@ -447,6 +447,18 @@ pub value type @optional<a>
   con @None   // note: must come second; see Core/Core.hs
 
 
+// Force lazy constructors
+pub inline extern force( x : a, ^eval : a -> e a ) : e a
+  c "kk_lazy_force"
+
+pub inline extern is-lazy( ^x : a ) : bool
+  c "kk_is_lazy"
+
+pub inline extern lazy-eval( x : a, eval : a -> e a ) : a
+  c "kk_lazy_eval"
+
+
+
 // ----------------------------------------------------------------------------
 // First-class constructor contexts.
 // These primitives are used by the compiler for

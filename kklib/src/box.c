@@ -56,7 +56,7 @@ kk_box_t kk_intptr_box(intptr_t i, kk_context_t* ctx) {
 }
 
 
-#if (KK_INTF_SIZE <= 8) 
+#if (KK_INTF_SIZE <= 8)
 typedef struct kk_boxed_int64_s {
   kk_block_t  _block;
   int64_t     value;
@@ -195,14 +195,14 @@ kk_ssize_t kk_ssize_unbox(kk_box_t b, kk_borrow_t borrow, kk_context_t* ctx) {
 
 // C pointers
 kk_box_t kk_cptr_raw_box(kk_free_fun_t* freefun, void* p, kk_context_t* ctx) {
-  kk_cptr_raw_t raw = kk_block_alloc_as(struct kk_cptr_raw_s, 0, KK_TAG_CPTR_RAW, ctx);
+  kk_cptr_raw_t raw = kk_block_alloc_raw_as(struct kk_cptr_raw_s, KK_TAG_CPTR_RAW, ctx);
   raw->free = freefun;
   raw->cptr = p;
   return kk_ptr_box(&raw->_block,ctx);
 }
 
 // always assumed borrowed! If dropped here a C free routine may make the returned pointer invalid.
-void* kk_cptr_raw_unbox_borrowed(kk_box_t b, kk_context_t* ctx) {  
+void* kk_cptr_raw_unbox_borrowed(kk_box_t b, kk_context_t* ctx) {
   kk_cptr_raw_t raw = kk_block_unbox_as(kk_cptr_raw_t, b, KK_TAG_CPTR_RAW, ctx);
   void* p = raw->cptr;
   // if (kk_is_owned(borrow)) { kk_base_type_drop(raw, ctx); }
@@ -216,7 +216,7 @@ kk_box_t kk_cptr_box(void* p, kk_context_t* ctx) {
     return kk_intf_box((kk_intf_t)i);
   }
   else {
-    // allocate 
+    // allocate
     return kk_cptr_raw_box(&kk_free_fun_null, p, ctx);
   }
 }
@@ -241,7 +241,7 @@ kk_box_t kk_unbox_Just_block( kk_block_t* b, kk_borrow_t borrow, kk_context_t* c
   kk_box_t res = kk_block_as(kk_just_t*, b)->value;
   if (kk_is_owned(borrow)) {
     if (kk_block_is_unique(b)) {
-      kk_block_free(b,ctx);  
+      kk_block_free(b,ctx);
     }
     else {
       kk_box_dup(res,ctx);
@@ -328,7 +328,7 @@ kk_box_t kk_double_box(double d, kk_context_t* ctx) {
   }
   kk_assert_internal(exp <= 0x3FF);
   kk_assert_internal((kk_shr64(u,1) & 0x3FF) == 0);
-  return kk_uintf_box( kk_shr64(u,1) | exp );  
+  return kk_uintf_box( kk_shr64(u,1) | exp );
 }
 
 double kk_double_unbox(kk_box_t b, kk_borrow_t borrow, kk_context_t* ctx) {
@@ -337,7 +337,7 @@ double kk_double_unbox(kk_box_t b, kk_borrow_t borrow, kk_context_t* ctx) {
     // expand 10-bit exponent to 11-bits again
     uint64_t u = kk_uintf_unbox(b);
     uint64_t exp = u & 0x3FF;
-    u -= exp;    // clear lower 10 bits        
+    u -= exp;    // clear lower 10 bits
     if (exp == 0) {
       // ok
     }
@@ -365,7 +365,7 @@ double kk_double_unbox(kk_box_t b, kk_borrow_t borrow, kk_context_t* ctx) {
   Float boxing on 32-bit systems
 ----------------------------------------------------------------*/
 
-#if (KK_INTF_SIZE == 4) 
+#if (KK_INTF_SIZE == 4)
 // Generic float allocation in the heap
 typedef struct kk_boxed_float_s {
   kk_block_t _block;

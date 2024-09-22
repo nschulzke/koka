@@ -9,7 +9,7 @@
   found in the LICENSE file at the root of this distribution.
 ---------------------------------------------------------------------------*/
 
-#define KKLIB_BUILD          148    // modify on changes to trigger recompilation..
+#define KKLIB_BUILD          153    // modify on changes to trigger recompilation..
 // #define KK_DEBUG_FULL       1    // set to enable full internal debug checks
 
 // Includes
@@ -54,6 +54,7 @@
 typedef enum kk_tag_e {
   KK_TAG_INVALID   = 0,
   KK_TAG_MIN       = 1,
+  KK_TAG_LAZY      = 0x03,     // lazy constructors start here
   KK_TAG_MAX       = 0xFFC0,   // space for 64 special tags
   KK_TAG_OPEN,        // open datatype, first field is a string tag
   KK_TAG_BOX,         // boxed value type
@@ -74,6 +75,9 @@ typedef enum kk_tag_e {
   KK_TAG_EVV_VECTOR,  // evidence vector (used in std/core/hnd)
   KK_TAG_NOTHING,     // used to avoid allocation for unnested maybe-like types
   KK_TAG_JUST,
+  KK_TAG_INDIRECT,    // indirection node used for lazy constructors
+  KK_TAG_LAZY_EVAL,   // lazy value being evaluated (black hole)
+  KK_TAG_LAZY_PREP,   // used for multi-threaded initialization of lazy value evaluation
   // raw tags have a free function together with a `void*` to the data
   KK_TAG_CPTR_RAW,    // full void* (must be first, see kk_tag_is_raw())
   KK_TAG_BYTES_RAW,   // pointer to byte buffer
@@ -86,6 +90,10 @@ typedef enum kk_tag_e {
 
 static inline bool kk_tag_is_raw(kk_tag_t tag) {
   return (tag >= KK_TAG_CPTR_RAW);
+}
+
+static inline bool kk_tag_is_lazy(kk_tag_t tag) {
+  return (tag >= KK_TAG_LAZY); // && tag <= KK_TAG_MAX || (tag >= KK_TAG_INDIRECT && tag <= KK_TAG_LAZY_PREP)
 }
 
 /*--------------------------------------------------------------------------------------
@@ -114,17 +122,21 @@ static inline kk_refcount_t kk_refcount_inc(kk_refcount_t rc) {
   return (kk_refcount_t)((uint32_t)rc + 1);
 }
 
+// field index: used for stackless free-ing and also for the context path (for first-class constructor contexts)
+typedef int kk_field_idx_t;
+#define KK_FIELD_IDX_MAX        0xFF
+
 // context path index
 typedef int kk_cpath_t;
-#define KK_CPATH_MAX (0xFF)
+#define KK_CPATH_MAX            KK_FIELD_IDX_MAX
 
 
 // Every heap block starts with a 64-bit header with a reference count, tag, and scan fields count.
 // If the scan_fsize == 0xFF, the full scan count is in the first field as a boxed int (which includes the scan field itself).
 typedef struct kk_header_s {
-  uint8_t   scan_fsize;  // number of fields that should be scanned when releasing (`scan_fsize <= 0xFF`, if 0xFF, the full scan size is the first field)
-  uint8_t   _field_idx;  // private: used for context paths and during stack-less freeing  (see `refcount.c`)
-  uint16_t  tag;         // constructor tag
+  uint8_t   scan_fsize;       // number of fields that should be scanned when releasing (`scan_fsize <= 0xFF`, if 0xFF, the full scan size is the first field)
+  uint8_t   _field_idx;       // private: used for context paths, during stack-less freeing  (see `refcount.c`), and for lazy constructors
+  uint16_t  tag;              // constructor tag
   _Atomic(kk_refcount_t) refcount; // reference count  (last to reduce code size constants in kk_header_init)
 } kk_header_t;
 
@@ -134,7 +146,7 @@ typedef struct kk_header_s {
 
 static inline void kk_header_init(kk_header_t* h, kk_ssize_t scan_fsize, kk_cpath_t cpath, kk_tag_t tag) {
   kk_assert_internal(scan_fsize >= 0 && scan_fsize <= KK_SCAN_FSIZE_MAX);
-  kk_assert_internal(cpath >= 0 && cpath <= KK_CPATH_MAX);
+  kk_assert_internal(cpath >= 0 && cpath <= KK_FIELD_IDX_MAX);
 #if (KK_ARCH_LITTLE_ENDIAN && !defined(__aarch64__))
   *((uint64_t*)h) = ((uint64_t)scan_fsize | ((uint64_t)cpath << 8) | ((uint64_t)tag << 16)); // explicit shifts leads to better codegen in general
 #else
@@ -550,28 +562,21 @@ static inline void kk_free_local(const void* p, kk_context_t* ctx) {
   kk_free(p,ctx);
 }
 
-#if defined(__linux__) || defined(__GLIBC__) || defined(__wasi__) || defined(__EMSCRIPTEN__)
-#include <malloc.h>
-#define kk_malloc_usable_size(p)  malloc_usable_size(p)
-#elif defined(__APPLE__)
+#if defined(__APPLE__)
 #include <malloc/malloc.h>
 #define kk_malloc_usable_size(p)  malloc_size(p)
 #elif defined(_MSC_VER)
 #include <malloc.h>
 #define kk_malloc_usable_size(p)  _msize(p)
+#else
+#include <malloc.h>
+#define kk_malloc_usable_size(p)  malloc_usable_size(p)
 #endif
 
 #endif
 
-#if defined(kk_malloc_usable_size)
-#define KK_HAS_MALLOC_COPY
-static inline void* kk_malloc_copy(const void* p, kk_context_t* ctx) {
-  const size_t size = kk_malloc_usable_size((void*)p);
-  void* q = kk_malloc(kk_to_ssize_t(size), ctx);
-  memcpy(q,p,size);
-  return q;
-}
-#endif
+kk_decl_export void*       kk_malloc_copy(const void* p, kk_context_t* ctx);
+kk_decl_export kk_block_t* kk_block_alloc_copy(kk_block_t* b, kk_context_t* ctx);
 
 static inline void kk_block_init(kk_block_t* b, kk_ssize_t size, kk_ssize_t scan_fsize, kk_cpath_t cpath, kk_tag_t tag) {
   kk_unused(size);
@@ -613,9 +618,15 @@ static inline kk_block_t* kk_block_alloc_at(kk_reuse_t at, kk_ssize_t size, kk_s
 
 static inline kk_block_t* kk_block_alloc(kk_ssize_t size, kk_ssize_t scan_fsize, kk_tag_t tag, kk_context_t* ctx) {
   kk_assert_internal(scan_fsize >= 0 && scan_fsize < KK_SCAN_FSIZE_MAX);
+  kk_assert(!kk_tag_is_raw(tag) || scan_fsize == 0);
   kk_block_t* b = (kk_block_t*)kk_malloc_small(size, ctx);
   kk_block_init(b, size, scan_fsize, 0, tag);
   return b;
+}
+
+static inline kk_block_t* kk_block_alloc_raw(kk_ssize_t size, kk_tag_t tag, kk_context_t* ctx) {
+  kk_assert(kk_tag_is_raw(tag));
+  return kk_block_alloc(size, 0, tag, ctx);
 }
 
 static inline kk_block_t* kk_block_alloc_any(kk_ssize_t size, kk_ssize_t scan_fsize, kk_tag_t tag, kk_context_t* ctx) {
@@ -649,6 +660,7 @@ static inline void kk_block_free(kk_block_t* b, kk_context_t* ctx) {
 
 #define kk_block_alloc_as(struct_tp,scan_fsize,tag,ctx)              ((struct_tp*)kk_block_alloc( sizeof(struct_tp),scan_fsize,tag,ctx))
 #define kk_block_alloc_at_as(struct_tp,at,scan_fsize,cpath,tag,ctx)  ((struct_tp*)kk_block_alloc_at(at, sizeof(struct_tp),scan_fsize,cpath,tag,ctx))
+#define kk_block_alloc_raw_as(struct_tp,tag,ctx)                     ((struct_tp*)kk_block_alloc_raw( sizeof(struct_tp),tag,ctx))
 
 #define kk_block_as(tp,b)             ((tp)((void*)(b)))
 #define kk_block_assert(tp,b,tag)     ((tp)kk_block_assertx(b,tag))
@@ -702,7 +714,7 @@ static inline void kk_block_drop(kk_block_t* b, kk_context_t* ctx) {
 // is if it happened to be thread shared and another thread decremented the count as well.
 static inline void kk_block_decref(kk_block_t* b, kk_context_t* ctx) {
   kk_assert_internal(kk_block_is_valid(b));
-  const kk_refcount_t rc = b->header.refcount;
+  const kk_refcount_t rc = kk_block_refcount(b);
   if kk_unlikely(kk_refcount_is_unique_or_thread_shared(rc)) {  // (signed)rc <= 0
     kk_block_check_decref(b, rc, ctx);  // thread-shared, sticky (overflowed), or can be freed?
   }
@@ -1330,9 +1342,9 @@ static inline void kk_set_cpath_at( kk_block_t* b, kk_cpath_t cpath ) {
   b->header._field_idx = (uint8_t)cpath;
   }
 
-#if !defined(KK_HAS_MALLOC_COPY)
+#if !defined(kk_malloc_usable_size)
 #define KK_CCTX_NO_CONTEXT_PATH
-#else
+#endif
 
 // context copy along the context path and return a new context.
 kk_decl_export kk_decl_noinline kk_box_t kk_cctx_copy(kk_box_t res, kk_box_t* holeptr, kk_box_t** newholeptr, kk_context_t* ctx);
@@ -1345,14 +1357,11 @@ kk_decl_export kk_box_t kk_cctx_copy_apply( kk_box_t res, kk_box_t* holeptr, kk_
 // update the field_idx with the field index + 1 that is along the context path, and return `d` as is.
 static inline kk_datatype_t kk_cctx_setcp(kk_datatype_t d, size_t field_offset, kk_context_t* ctx) {
   kk_assert_internal((field_offset % sizeof(kk_box_t)) == 0);
-  kk_assert_internal(kk_datatype_is_ptr(d));
   const size_t field_index = (field_offset - sizeof(kk_header_t)) / sizeof(kk_box_t);
   kk_assert_internal(field_index <= KK_SCAN_FSIZE_MAX - 2);
   kk_block_field_idx_set( kk_datatype_as_ptr(d,ctx), 1 + (uint8_t)field_index);
   return d;
 }
-
-#endif
 
 typedef kk_box_t kk_field_addr_t;
 
@@ -1367,14 +1376,15 @@ typedef kk_box_t kk_field_addr_t;
 #include "kklib/maybe.h"
 #include "kklib/integer.h"
 #include "kklib/bytes.h"
+#include "kklib/lazy.h"
 #include "kklib/string.h"
 #include "kklib/ref.h"
 #include "kklib/vector.h"
 
-#include "kklib/random.h"
 #include "kklib/os.h"
-#include "kklib/thread.h"
 #include "kklib/process.h"    // Process info (memory usage, run time etc.)
+#include "kklib/random.h"
+#include "kklib/thread.h"
 
 
 

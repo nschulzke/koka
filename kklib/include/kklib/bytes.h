@@ -12,12 +12,12 @@
 /*---------------------------------------------------------------------------------------------------------------
   Bytes.
   There are four possible representations for bytes:
-  
+
   - singleton empty bytes
   - small byte sequence of at most 7 bytes (ending in a zero byte not included in the length)
   - normal sequence of bytes (ending in a zero byte not included in the length)
   - raw bytes, pointing to an (external) sequence of bytes.
-  
+
   These are not necessarily canonical (e.g. a normal or small bytes can have length 0 instead of being an empty singleton)
 -------------------------------------------------------------------------------------------------------------*/
 
@@ -37,7 +37,7 @@ static inline kk_bytes_t kk_bytes_empty(void) {
 typedef struct kk_bytes_small_s {
   struct kk_bytes_s _base;
   union {
-    uint64_t buf_value;              
+    uint64_t buf_value;
     uint8_t  buf[KK_BYTES_SMALL_MAX+1];   // bytes in-place ending in 0 of at most 7 bytes
                                           // (the ending zero is followed by 0xFF bytes to distinguish
                                           //  the final zero from potential internal zero bytes)
@@ -52,8 +52,8 @@ typedef struct kk_bytes_normal_s {
 
 typedef struct kk_bytes_raw_s {
   struct kk_bytes_s _base;
-  kk_free_fun_t* free;     
-  const uint8_t* cbuf;                    
+  kk_free_fun_t* free;
+  const uint8_t* cbuf;
   kk_ssize_t        clength;
 } *kk_bytes_raw_t;
 
@@ -62,12 +62,12 @@ typedef struct kk_bytes_raw_s {
   static struct { struct kk_bytes_s _base; kk_ssize_t length; uint8_t buf[len+1]; } _static_##name = \
     { { { KK_HEADER_STATIC(0,KK_TAG_BYTES) } }, len, init }; \
   decl kk_bytes_t name = { &_static_##name._base._block }; \
-  
+
 #define kk_define_bytes_literal_empty(decl,name) \
   decl kk_bytes_t name = { (kk_block_t*)((uintptr_t)(5)) };
 
 static inline kk_bytes_t kk_bytes_unbox(kk_box_t v) {
-  return kk_datatype_unbox(v);  
+  return kk_datatype_unbox(v);
 }
 
 static inline kk_box_t kk_bytes_box(kk_bytes_t s) {
@@ -88,7 +88,7 @@ static inline kk_bytes_t kk_bytes_dup(kk_bytes_t b, kk_context_t* ctx) {
 --------------------------------------------------------------------------------------*/
 
 // Allocate `len` bytes.
-// If (p /= NULL) then initialize with at most `min(len,plen)` bytes from `p`, which must point to at least `plen` valid bytes. 
+// If (p /= NULL) then initialize with at most `min(len,plen)` bytes from `p`, which must point to at least `plen` valid bytes.
 // Adds a terminating zero at the end. Return the raw buffer pointer in `buf` if non-NULL
 kk_decl_export kk_bytes_t kk_bytes_alloc_len(kk_ssize_t len, kk_ssize_t plen, const uint8_t* p, uint8_t** buf, kk_context_t* ctx);
 kk_decl_export kk_bytes_t kk_bytes_adjust_length(kk_bytes_t p, kk_ssize_t newlen, kk_context_t* ctx);
@@ -104,7 +104,7 @@ static inline kk_bytes_t kk_bytes_alloc_cbuf(kk_ssize_t len, char** buf, kk_cont
 }
 
 
-// Allocate `len` bytes initialized 
+// Allocate `len` bytes initialized
 static inline kk_bytes_t kk_bytes_alloc_dupn(kk_ssize_t len, const uint8_t* p, kk_context_t* ctx) {
   // kk_assert_internal(kk_utf8_is_valid(s))
   return kk_bytes_alloc_len(len, len, p, NULL, ctx);
@@ -113,7 +113,7 @@ static inline kk_bytes_t kk_bytes_alloc_dupn(kk_ssize_t len, const uint8_t* p, k
 // Raw bytes that directly points to an external buffer.
 static inline kk_bytes_t kk_bytes_alloc_raw_len(kk_ssize_t len, const uint8_t* p, bool free, kk_context_t* ctx) {
   if (len == 0 || p==NULL) return kk_bytes_empty();
-  struct kk_bytes_raw_s* br = kk_block_alloc_as(struct kk_bytes_raw_s, 0, KK_TAG_BYTES_RAW, ctx);
+  struct kk_bytes_raw_s* br = kk_block_alloc_raw_as(struct kk_bytes_raw_s, KK_TAG_BYTES_RAW, ctx);
   br->free = (free ? &kk_free_fun : NULL);
   br->cbuf = p;
   br->clength = len;
