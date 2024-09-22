@@ -215,15 +215,17 @@ parcBorrowArg expr parInfo
                 let def = makeDef argName expr'
                 return ([DefNonRec def], Nothing, Var (defTName def) InfoNone)
       (Var tname info, Borrow)
-        -> if infoIsRefCounted info
-            then (\d -> ([], d, expr)) <$> useTNameBorrowed tname
-            else return ([], Nothing, expr)
+        -> do -- parcTrace ("borrow var arg: " ++ show tname)
+              if infoIsRefCounted info
+                then (\d -> ([], d, expr)) <$> useTNameBorrowed tname
+                else return ([], Nothing, expr)
       (_, Borrow)
         -> do expr' <- parcExpr expr
               notRefCounted <- exprIsNotRefcounted expr   -- for example, small integer literals
               if (notRefCounted)
                 then return ([], Nothing, expr')
-                else do argName <- uniqueName "brw"
+                else do -- parcTraceDoc $ \penv -> text "borrow:" <+> prettyExpr penv expr
+                        argName <- uniqueName "brw"
                         let def = makeDef argName expr'
                         drop <- extendOwned (S.singleton (defTName def)) $ genDrop (defTName def)
                         return ([DefNonRec def], drop, Var (defTName def) InfoNone)
@@ -723,8 +725,16 @@ dupDropFun isDup tp mbConRepr mbScanCount arg
 exprIsNotRefcounted :: Expr -> Parc Bool
 exprIsNotRefcounted expr
   = case expr of
+      TypeApp body targs
+        -> exprIsNotRefcounted body
+      TypeLam tpar body
+        -> exprIsNotRefcounted body
+      Lam{}
+        -> return (tnamesIsEmpty (freeLocals expr))  -- will become a static function
       Lit (LitInt i)
         -> return (i >= -8191 && i <= 8191)  -- 14 bits is safe on every platform
+      Var v info                             -- static function etc.
+        -> return (not (infoIsRefCounted info))
       _ -> not <$> needsDupDrop (typeOf expr)
 
 

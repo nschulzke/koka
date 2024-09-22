@@ -1222,7 +1222,8 @@ genLambda params eff body
                          then [text "kk_define_static_function" <.> arguments [text "_fself", ppName funName] -- <.> semi
                                --text "static" <+> structDoc <+> text "_self ="
                               --  <+> braces (braces (text "static_header(1, TAG_FUNCTION), box_cptr(&" <.> ppName funName <.> text ")")) <.> semi
-                              ,text "return kk_function_dup(_fself,kk_context());"]
+                              -- ,text "return kk_function_dup(_fself,kk_context());"]
+                              , text "return _fself;"] -- no need to dup a static function
                          else [structDoc <.> text "* _self = kk_function_alloc_as" <.> arguments [structDoc, pretty scanCount
                                                                                               ] <.> semi
                               ,text "_self->_base.fun = kk_kkfun_ptr_box(&" <.> ppName funName <.> text ", kk_context());"]
@@ -1236,7 +1237,7 @@ genLambda params eff body
 
        bodyDoc <- genStat (ResultReturn (if eqType (typeOf body) typeUnit then Just (TName nameNil typeUnit) else Nothing) params) body
        let funDef = funSig <+> block (
-                      (if (null fields) then text "kk_unused(_fself);"
+                      (if (null fields) then text "kk_unused(_fself);" -- no need to drop a static function
                         else let dups = braces (hcat [genDupCall tp (ppName name) <.> semi | (name,tp) <- fields])
                              in vcat ([structDoc <.> text "* _self = kk_function_as" <.> arguments [structDoc <.> text "*",text "_fself"] <.> semi]
                                    ++ [ppType tp <+> ppName name <+> text "= _self->" <.> ppName name <.> semi <+> text "/*" <+> pretty tp <+> text "*/"  | (name,tp) <- fields]
@@ -1880,16 +1881,16 @@ genAppNormal (Var tname _) [xs] | getName tname `elem` [nameVectorFromList,nameV
            vecDecl = text "kk_vector_t" <+> vec <+> text "=" <+> create <.> semi
            bufDecl = text "kk_box_t*" <+> buf <+> text "= kk_vector_buf_borrow" <.> arguments [vec,text "NULL"] <.> semi
            assigns = [buf <.> text "[" <.> pretty i <.> text "] =" <+> elemDoc <.> semi | (i,elemDoc) <- zip [0::Int ..] elemDocs]
-       return (decls ++ [vecDecl,bufDecl] ++ assigns,vec)           
-  where 
+       return (decls ++ [vecDecl,bufDecl] ++ assigns,vec)
+  where
     isConsList xs = isJust (extractConsList xs)
-    extractConsList (Con tname repr) | getName tname == nameListNil  
+    extractConsList (Con tname repr) | getName tname == nameListNil
       = Just []
     extractConsList (App (Con tname repr) [hd,tl]) | getName tname == nameCons
       = case extractConsList tl of
           Just xs -> Just (hd:xs)
           _       -> Nothing
-    extractConsList e = -- trace ("unknown type: " ++ show e) $ 
+    extractConsList e = -- trace ("unknown type: " ++ show e) $
                         Nothing
 
 -- special: allocat

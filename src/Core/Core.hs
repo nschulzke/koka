@@ -56,7 +56,7 @@ module Core.Core ( -- Data structures
                    , coreName
                    , tnamesList, tnamesEmpty, tnamesDiff, tnamesInsertAll
                    , tnamesUnion, tnamesUnions, tnamesRemove, tnamesFromList
-                   , tnamesMember, tnamesDisjoint
+                   , tnamesMember, tnamesDisjoint, tnamesIsEmpty
                    -- , getTypeArityExpr -- ,getParamArityExpr
                    , getEffExpr
                    , TNames
@@ -796,7 +796,7 @@ infoIsLocal info
   = case info of
       InfoNone       -> True
       InfoReuse{}    -> True
-      InfoArity{}    -> False
+      InfoArity{}    -> False      -- (todo: is this also the case for compressed pointers?)
       InfoExternal{} -> False
       InfoConField{} -> False
 
@@ -1036,6 +1036,9 @@ type TNames = S.Set TName
 
 tnamesEmpty :: TNames
 tnamesEmpty = S.empty
+
+tnamesIsEmpty :: TNames -> Bool
+tnamesIsEmpty tnames = S.null tnames
 
 tnamesList :: TNames -> [TName]
 tnamesList tns
