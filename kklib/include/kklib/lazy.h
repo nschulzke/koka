@@ -16,17 +16,25 @@
 -------------------------------------------------------------------------------------------------------------*/
 
 static inline bool kk_block_is_lazy(kk_block_t* b) {
-  kk_assert(!kk_tag_is_raw(kk_block_tag(b)));
   return kk_tag_is_lazy(kk_block_tag(b));
+}
+
+static inline bool kk_block_is_lazy_or_special(kk_block_t* b) {
+  return (kk_block_tag(b) >= KK_TAG_LAZY); // for typed data, this is a faster test if the constructor is lazy
 }
 
 static inline bool kk_block_is_blackhole(kk_block_t* b) {
   return kk_block_has_tag(b, KK_TAG_LAZY_EVAL);
 }
 
-static inline bool kk_datatype_is_lazy( kk_datatype_t d_borrow, kk_context_t* ctx) {
-  if (!kk_datatype_is_ptr(d_borrow)) return false;
-  return kk_block_is_lazy(kk_datatype_as_ptr(d_borrow,ctx));
+static inline bool kk_datatype_is_lazy( kk_datatype_t d, kk_context_t* ctx) {
+  if (!kk_datatype_is_ptr(d)) return false;
+  return kk_block_is_lazy(kk_datatype_as_ptr(d,ctx));
+}
+
+static inline bool kk_datatype_is_lazy_or_special( kk_datatype_t d, kk_context_t* ctx) {
+  if (!kk_datatype_is_ptr(d)) return false;
+  return kk_block_is_lazy_or_special(kk_datatype_as_ptr(d,ctx));
 }
 
 // `forall<e,a> ( x : a, eval: a -> e a) -> e a`. For now `e` must be at most `<div>` as we
@@ -35,13 +43,19 @@ kk_decl_export kk_datatype_t kk_datatype_lazy_eval(kk_datatype_t d, kk_function_
 
 // todo: for efficiency, we assume `eval` is static (and thus needs no drop)
 static inline kk_datatype_t kk_datatype_lazy_force(kk_datatype_t d, kk_function_t eval, kk_context_t* ctx) {
-  if (!kk_datatype_is_lazy(d, ctx)) { kk_function_static_drop(eval,ctx); return d; }
-                               else return kk_datatype_lazy_eval(d, eval, ctx);
+  if (!kk_datatype_is_lazy_or_special(d, ctx)) {  // assume used on typed lazy data (so we can use the quick test)
+    kk_function_static_drop(eval,ctx);
+    return d;
+  }
+  else {
+    kk_assert(kk_datatype_is_lazy(d,ctx));
+    return kk_datatype_lazy_eval(d, eval, ctx);
+  }
 }
 
 
-static inline bool kk_is_lazy( kk_box_t d_borrow, kk_context_t* ctx) {
-  return kk_datatype_is_lazy(kk_datatype_unbox(d_borrow),ctx);
+static inline bool kk_is_lazy( kk_box_t d, kk_context_t* ctx) {
+  return kk_datatype_is_lazy_or_special(kk_datatype_unbox(d),ctx);
 }
 
 static inline kk_box_t kk_lazy_eval( kk_box_t d, kk_function_t eval, kk_context_t* ctx) {

@@ -56,6 +56,9 @@ typedef enum kk_tag_e {
   KK_TAG_MIN       = 1,
   KK_TAG_LAZY      = 0x03,     // lazy constructors start here
   KK_TAG_MAX       = 0xFFC0,   // space for 64 special tags
+  KK_TAG_LAZY_EVAL,   // lazy value being evaluated (black hole)
+  KK_TAG_LAZY_PREP,   // used for multi-threaded initialization of lazy value evaluation
+  KK_TAG_LAZY_IND,    // indirection node used for lazy constructors
   KK_TAG_OPEN,        // open datatype, first field is a string tag
   KK_TAG_BOX,         // boxed value type
   KK_TAG_BOX_ANY,     // kk_box_any polymorphic value
@@ -75,9 +78,6 @@ typedef enum kk_tag_e {
   KK_TAG_EVV_VECTOR,  // evidence vector (used in std/core/hnd)
   KK_TAG_NOTHING,     // used to avoid allocation for unnested maybe-like types
   KK_TAG_JUST,
-  KK_TAG_INDIRECT,    // indirection node used for lazy constructors
-  KK_TAG_LAZY_EVAL,   // lazy value being evaluated (black hole)
-  KK_TAG_LAZY_PREP,   // used for multi-threaded initialization of lazy value evaluation
   // raw tags have a free function together with a `void*` to the data
   KK_TAG_CPTR_RAW,    // full void* (must be first, see kk_tag_is_raw())
   KK_TAG_BYTES_RAW,   // pointer to byte buffer
@@ -93,7 +93,7 @@ static inline bool kk_tag_is_raw(kk_tag_t tag) {
 }
 
 static inline bool kk_tag_is_lazy(kk_tag_t tag) {
-  return (tag >= KK_TAG_LAZY); // && tag <= KK_TAG_MAX || (tag >= KK_TAG_INDIRECT && tag <= KK_TAG_LAZY_PREP)
+  return (tag >= KK_TAG_LAZY && tag <= KK_TAG_LAZY_IND);
 }
 
 /*--------------------------------------------------------------------------------------
