@@ -1908,9 +1908,9 @@ genAppNormal v@(Var allocAt _) [at, Let dgs expr]  | getName allocAt == nameAllo
 genAppNormal (Var (TName conTagScanFieldsAssign typeAssign) _) (Var reuseName (InfoConField conName conRepr nameNil):(Var tag _):(Var scan _):fieldValues) | conTagScanFieldsAssign == nameConTagScanFieldsAssign
   = do tmp <- genVarName "con"
        let setTag  = tmp <.> text "->_base._block.header.tag = (kk_tag_t)" <.> parens (text (show tag)) <.> semi
-           setScan = tmp <.> text "->_base._block.header.scan = (uint8_t)" <.> parens (text (show scan)) <.> semi
+           setScan = tmp <.> text "->_base._block.header.scan_fsize = (uint8_t)" <.> parens (text (show scan)) <.> semi
            fieldNames = case splitFunScheme typeAssign of
-                          Just (_,_,args,_,_) -> tail (tail (map fst args))
+                          Just (_,_,args,_,_) -> tail (tail (tail (map fst args)))
                           _ -> failure ("Backend.C.FromCore: illegal conAssignFields type: " ++ show (pretty typeAssign))
        (decls, tmpDecl, assigns, result) <- genAssignFields tmp conName conRepr reuseName fieldNames fieldValues
        return (decls ++ [tmpDecl, setScan, setTag] ++ assigns, result)

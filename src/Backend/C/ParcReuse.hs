@@ -38,7 +38,7 @@ import Common.Syntax
 import Core.Core
 import Core.Pretty
 
-import Backend.C.ParcReuseSpec (Match(..), tryMatch, genConTagFieldsAssign, genConFieldsAssign)
+import Backend.C.ParcReuseSpec (Match(..), tryMatch, genConTagFieldsAssign, genConFieldsAssign, genConTagScanFieldsAssign)
 
 --------------------------------------------------------------------------
 -- Reference count transformation
@@ -107,16 +107,22 @@ extractCon (Con cname repr) = Just (cname, repr)
 extractCon (TypeApp (Con cname repr) _) = Just (cname, repr)
 extractCon _ = Nothing
 
-ruSpecCon' :: TName -> TName -> ConRepr -> ConInfo -> Bool -> Int -> Type -> [Match] -> Reuse Expr
-ruSpecCon' reuseName conName conRepr conInfo needsTag tag resultType matches
+ruSpecCon' :: HasCallStack => TName -> TName -> ConRepr -> ConInfo -> Maybe (Int,Maybe Int) -> [Match] -> Reuse Expr
+ruSpecCon' reuseName conName conRepr conInfo mbTagScan matches
   = do (defss, assigns) <- unzip <$> mapM ruToAssign matches
-       let fields = map fst (conInfoParams conInfo)
+       let resultType = case splitFunScheme (conInfoType conInfo) of
+                          Just (_,_,_,_,res) -> res
+           fields = map fst (conInfoParams conInfo)
            nonMatching = [(name,expr) | (name,(expr,isMatch)) <- zip fields assigns, not isMatch]
-           reuseExpr = if needsTag then genConTagFieldsAssign resultType conName conRepr reuseName tag nonMatching
-                                   else genConFieldsAssign resultType conName conRepr reuseName nonMatching
+           reuseExpr = case mbTagScan of
+                         Just(tag,Just scan) -> genConTagScanFieldsAssign resultType conName conRepr reuseName tag scan nonMatching
+                         Just(tag,Nothing)   -> genConTagFieldsAssign resultType conName conRepr reuseName tag nonMatching
+                         Nothing             -> genConFieldsAssign resultType conName conRepr reuseName nonMatching
            -- rWhite = genWhitehole reuseName
-       res <- uniqueName "ru"
-       return (makeLet (concat defss) $ makeLet [DefNonRec (makeDef res reuseExpr)] (makeStats [{-rWhite,-} Var (TName res (typeOf reuseExpr)) InfoNone]))
+       res <- uniqueTName "res" resultType
+       return (makeLet (concat defss) $ reuseExpr)
+               --makeLet [DefNonRec (makeTDef res reuseExpr)] $
+               --makeStats [{-rWhite,-} Var res InfoNone])
 
 stripLets :: Expr -> ([DefGroup], Expr)
 stripLets expr
@@ -139,25 +145,7 @@ ruExpr expr
         -> do registerLazyCon tname
               return (Lit (LitInt 0)) -- expr
       App (Var name _) [Var tname _, conApp] | nameStem (getName name) == "lazy-update"
-        -> do ds <- getDeconstructed
-              (_, reuseName) <- getDeconstructedLazyCon
-              markReused reuseName
-              case NameMap.lookup (getName tname) ds of
-                Just (pat, size, scan)
-                  -> let info = maybe InfoNone InfoReuse pat
-                         (boxDefs, conApp') = stripLets conApp
-                     in case (conApp',info) of
-                       (App (Con cname repr) args, InfoReuse (PatCon{patConName, patConPatterns}))
-                         -> do args <- mapM ruExpr args
-                               let matches = zipWith tryMatch args patConPatterns
-                                   needsTag = patConName /= cname
-                               mci <- getConInfo (typeOf cname) (getName cname)
-                               case mci of
-                                 Just ci
-                                   -> makeLets boxDefs <$> ruSpecCon' reuseName cname repr ci needsTag (conTag repr) (typeOf conApp') matches
-                                 Nothing -> failure $ "Backend.C.ParcReuse.ruExpr.lazy-update: lazy con error: no con info for " ++ show cname
-                       (_, _) -> failure $ "Backend.C.ParcReuse.ruExpr.lazy-update: lazy con error: not a con app: " ++ show conApp
-                Nothing -> failure $ "Backend.C.ParcReuse.ruExpr.lazy-update: lazy con error: no deconstructed info for " ++ show tname
+        -> ruLazyUpdate tname conApp
 
       App con@(Con cname repr) args
         -> do args' <- mapM ruExpr args
@@ -250,7 +238,7 @@ ruLet' def
                   regLazyCon <- getRegisteredLazyCon
                   case regLazyCon of
                     Just regLazyCon | y == regLazyCon -> do
-                      ru <- uniqueTName typeReuse
+                      ru <- uniqueReuseName typeReuse
                       deconstructLazyCon ru
                       return (\reused ->
                         let (rusUnique, rUnique') = fUnique reused
@@ -290,7 +278,7 @@ ruMakeAvailable tname
        enable <- getEnableReuse
        case (enable, NameMap.lookup (getName tname) ds) of
          (True, Just (pat, size, scan))
-           -> do reuseName <- uniqueTName typeReuse
+           -> do reuseName <- uniqueReuseName typeReuse
                  updateAvailable (M.insertWith (++) size [ReuseInfo reuseName pat])
                  return $ Just reuseName
          _ -> return Nothing
@@ -378,7 +366,7 @@ ruTryReuseCon cname repr conApp
                  -- Picking can prevent reuse in FIP programs, disabled for now.
                  setAvailable (M.insert size rinfos available)
                  markReused (reuseName rinfo)
-                 return (genAllocAt rinfo conApp)
+                 return (genAllocAt rinfo conApp (typeOf conApp))
          _ -> return conApp
   where
     -- pick a good match: for now we prefer the same constructor
@@ -389,6 +377,118 @@ ruTryReuseCon cname repr conApp
       = (rinfo,rinfos)
     pick cname rinfo (rinfo':rinfos)
       = let (r,rs) = pick cname rinfo' rinfos in (r,rinfo:rs)
+
+ruLazyUpdate :: HasCallStack => TName -> Expr -> Reuse Expr
+ruLazyUpdate lazyTName arg
+  = do ds <- getDeconstructed
+       (_, reuseName) <- getDeconstructedLazyCon
+       markReused reuseName
+       case NameMap.lookup (getName lazyTName) ds of
+         Nothing -> failure $ "Backend.C.ParcReuse.ruExpr.lazy-update: cannot find lazy update target: " ++ show lazyTName
+         Just lazyInfo
+           -> let (boxDefs, tailArg) = stripLets arg
+              in makeLets boxDefs <$>
+                 case tailArg of
+                   -- try to write the constructor in-place on the lazy one
+                   App con@(Con cname repr) args                 -> updateCon reuseName lazyInfo cname repr con args
+                   App con@(TypeApp (Con cname repr) targs) args -> updateCon reuseName lazyInfo cname repr con args
+                   -- singleton uses an indirection
+                   Con cname repr -> lazyIndirect reuseName lazyInfo True tailArg
+                   -- otherwise use an indirection
+                   _ -> do warning (\penv -> text "cannot update lazy value directly as the result size is not statically known -- using indirection")
+                           lazyIndirect reuseName lazyInfo False tailArg
+  where
+    ppName penv name = prettyName (Pretty.colors penv) name
+
+    warning f
+      = do defs <- getCurrentDef
+           penv <- getPrettyEnv
+           let doc = (list (map (ppName penv . defName) defs) <.> colon <+>
+                     text "lazy value" <+> ppName penv (getName lazyTName)) <.> colon <+> (f penv)
+           trace (show doc) $ return ()
+
+
+
+    updateCon :: TName -> (Maybe Pattern,Int,Int) -> TName -> ConRepr -> Expr -> [Expr] -> Reuse Expr
+    updateCon reuseName lazyInfo@(pat,lazySize,scan) cname crepr con args
+      = do platform <- getPlatform
+           let size = conReprAllocSize platform crepr
+           if (lazySize < size)
+             then -- the target is too small!
+                  do warning (\penv -> text "cannot update lazy value as it is not large enough -- using indirection")
+                     lazyIndirect reuseName lazyInfo False (App con args)
+             else if (size == 0)
+                    then do -- singleton
+                            lazyIndirect reuseName lazyInfo True (App con args)
+                    else do -- generate alloc-at
+                            args' <- mapM ruExpr args
+                            mci <- getConInfo (typeOf cname) (getName cname)
+                            lazyReuse reuseName lazyInfo mci cname crepr con args'
+
+    -- specialized reuse
+    lazyReuse :: HasCallStack => TName -> (Maybe Pattern,Int,Int) -> Maybe ConInfo -> TName -> ConRepr -> Expr -> [Expr] -> Reuse Expr
+    lazyReuse reuseName lazyInfo@(Just (PatCon{patConName,patConPatterns}),size,scan) (Just ci) cname crepr con args'
+      = do let matches   = zipWith tryMatch args' patConPatterns
+               needsTag  = patConName /= cname
+               needsScan = scan /= conReprScanCount crepr
+               mbTagScan = if needsScan
+                             then Just (conTag crepr, Just (conReprScanCount crepr))
+                             else if needsTag
+                                    then Just (conTag crepr, Nothing)
+                                    else Nothing
+               conApp    = App con args'
+           ruSpecCon' reuseName cname crepr ci mbTagScan matches
+    -- fallback
+    lazyReuse reuseName lazyInfo@(pat,size,scan) _ cname crepr con args'
+      = -- lazyReuseConApp reuseName pat (App con args')
+        return (genAllocAt (ReuseInfo reuseName pat) (App con args') (typeOf lazyTName))
+
+    -- create an indirection
+    lazyIndirect :: TName -> (Maybe Pattern,Int,Int) -> Bool -> Expr -> Reuse Expr
+    lazyIndirect reuseName lazyInfo isSingleton arg
+      = do  argName <- uniqueTName "lazyres" (typeOf lazyTName)
+            arg' <- ruExpr arg
+            let argVar  = Var argName InfoNone
+            indCon <- lazyIndirectCon reuseName lazyInfo argVar
+            let argDef body = makeDefsLet [makeDef (getName argName) arg'] body
+                indExpr = makeIfExpr (genIsUnique lazyTName)
+                            (makeStats [genFree lazyTName, argVar])
+                            (makeStats (concat [[indCon],
+                                                if isSingleton then [] else [genDup argName],
+                                                [genDecRef lazyTName, argVar]]))
+            return (argDef indExpr)
+
+    lazyIndirectCon :: TName -> (Maybe Pattern,Int,Int) -> Expr -> Reuse Expr
+    lazyIndirectCon reuseName lazyInfo arg'
+      = do mbInfo <- getLazyIndirectCon lazyTName
+           case mbInfo of
+             Just (cinfo,crepr)
+               -> let (_,_,rho) = splitPredType (conInfoType cinfo)
+                      cname = TName (conInfoName cinfo) rho
+                      con   = Con cname crepr
+                  in lazyReuse reuseName lazyInfo (Just cinfo) cname crepr con [arg']
+             Nothing
+               -> do failure ("Backend.C.ParcReuse.getLazyIndirectCon: cannot find indirection constructor for " ++ show lazyTName)
+                     return exprUnit
+
+
+genDecRef :: TName -> Expr
+genDecRef tname
+  = App (Var (TName nameDecRef funTp) (InfoExternal [(C CDefault, "decref(#1,current_context())")]))
+        [Var tname InfoNone]
+  where
+    funTp = TFun [(nameNil, typeOf tname)] typeTotal typeUnit
+
+
+genDup :: TName -> Expr
+genDup name
+  = App (Var (TName nameDup coerceTp) (InfoExternal [(C CDefault, "dup(#1)")])) [Var name InfoNone]
+  where
+    tp = typeOf name
+    coerceTp = TFun [(nameNil,tp)] typeTotal tp
+
+
+
 
 -- Generate a reuse of a constructor
 genDropReuse :: TName -> Expr {- : int32 -} -> Expr
@@ -402,12 +502,12 @@ genDropReuse tname scan
 -- generate allocation-at of a constructor application
 -- at should have tyep `typeReuse`
 -- conApp should have form  App (Con _ _) conArgs    : length conArgs >= 1
-genAllocAt :: ReuseInfo -> Expr -> Expr
-genAllocAt (ReuseInfo reuseName pat) conApp
+genAllocAt :: ReuseInfo -> Expr -> Type -> Expr
+genAllocAt (ReuseInfo reuseName pat) conApp conTp
   = App (Var (TName nameAllocAt typeAllocAt) (InfoArity 0 2)) [Var reuseName info, conApp]
   where
     info = maybe InfoNone InfoReuse pat
-    conTp = typeOf conApp
+    -- conTp = typeOf conApp
     typeAllocAt = TFun [(nameNil,typeReuse),(nameNil,conTp)] typeTotal conTp
 
 -- Generate a test if a (locally bound) name is unique
@@ -471,8 +571,11 @@ genReuseAssignWith reuseName arg
 --------------------------------------------------------------------------
 
 -- create a unique name specific to this module
-uniqueTName :: Type -> Reuse TName
-uniqueTName tp = (`TName` tp) <$> uniqueName "ru"
+uniqueReuseName :: Type -> Reuse TName
+uniqueReuseName tp = uniqueTName "ru" tp
+
+uniqueTName :: String -> Type -> Reuse TName
+uniqueTName pre tp = (`TName` tp) <$> uniqueName pre
 
 -- for mapping over a set and collecting the results into a list.
 foldMapM :: (Monad m, Foldable t) => (a -> m b) -> t a -> m [b]
@@ -740,39 +843,47 @@ getRuFixedDataAllocSize dataType
        platform <- getPlatform
        pure $ getFixedDataAllocSize platform newtypes dataType
 
--- | If all constructors of a type have the same shape,
--- return the byte size and number of scan fields.
 getFixedDataAllocSize :: Platform -> Newtypes -> Type -> Maybe (Int, Int)
 getFixedDataAllocSize platform newtypes dataType
-  = let mdataName = extractDataName dataType in
-    if maybe False (\nm -> "_noreuse" `isSuffixOf` nameLocal nm) mdataName
-    then Nothing else
-        let mdataInfo = (`newtypesLookupAny` newtypes) =<< mdataName in
-        case mdataInfo of
-          Just dataInfo
-            -> let ddef = dataInfoDef dataInfo
-               in if dataDefIsValue ddef
-                    then Nothing
-                    else let cis = dataInfoConstrs dataInfo
-                             sizeScanCounts = map (valueReprSizeScan platform . conInfoValueRepr) cis
-                         in case sizeScanCounts of
-                              (ss:sss) | all (==ss) sss -> Just ss
-                              _        -> Nothing
-               {-
-               in case ddef of
-                    DataDefValue vrepr
-                      -> let cis   = dataInfoConstrs dataInfo
-                             sizes = map (conInfoSize platform) cis
-                         in case sizes of
-                              (s:ss) | all (==s) ss -> Just (valueReprSize platform vrepr, valueReprScanCount vrepr)
-                              _                     -> Nothing
-                    _ -> Nothing -}
-          _ -> Nothing
+  = case getDataInfo newtypes dataType of
+      Nothing -> Nothing
+      Just (dataName,dataInfo)
+        -> if ("_noreuse" `isSuffixOf` nameLocal dataName)
+            then Nothing
+            else let ddef = dataInfoDef dataInfo
+                 in if dataDefIsValue ddef
+                      then Nothing
+                      else let cis = dataInfoConstrs dataInfo
+                               sizeScanCounts = map (valueReprSizeScan platform . conInfoValueRepr) cis
+                           in case sizeScanCounts of
+                                (ss:sss) | all (==ss) sss -> Just ss
+                                _        -> Nothing
+
+getLazyIndirectCon :: TName -> Reuse (Maybe (ConInfo,ConRepr))
+getLazyIndirectCon lazyTName
+  = do newtypes <- getNewtypes
+       platform <- getPlatform
+       case getDataInfo newtypes (typeOf lazyTName) of
+         Nothing -> do return Nothing
+         Just (_,dataInfo)
+           -> case filter (\cinfo -> "Indirect" `isSuffixOf` nameStem (conInfoName cinfo) ) (dataInfoConstrs dataInfo) of
+                [cinfo] | length (conInfoParams cinfo) == 1
+                  -> return (Just (cinfo,getConRepr dataInfo cinfo))
+                _ -> do return Nothing
+
+getDataInfo ::  Newtypes -> Type -> Maybe (Name,DataInfo)
+getDataInfo newtypes dataType
+  = case  extractDataName dataType of
+      Nothing   -> Nothing
+      Just name -> case newtypesLookupAny name newtypes of
+                     Just dataInfo -> Just (name,dataInfo)
+                     Nothing       -> Nothing
   where
     extractDataName :: Type -> Maybe Name
     extractDataName tp
       = case expandSyn tp of
           TFun _ _ t -> extractDataName t
+          TApp t _   -> extractDataName t
           TCon tc    -> Just (typeConName tc)
           _          -> Nothing
 

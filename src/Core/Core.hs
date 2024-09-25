@@ -203,7 +203,7 @@ makeList tp exprs
     cons expr xs = App (TypeApp consCon [tp]) [expr,xs]
     a = TypeVar (0) kindStar Bound
 
-makeDef :: Name -> Expr -> Def
+makeDef :: HasCallStack => Name -> Expr -> Def
 makeDef name expr
   = Def name (typeOf expr) expr Private DefVal InlineNever rangeNull ""
 
@@ -1200,7 +1200,7 @@ makeSizeT i
 -- type of a core term
 ---------------------------------------------------------------------------
 class HasType a where
-  typeOf :: a -> Type
+  typeOf :: HasCallStack => a -> Type
 
 instance HasType Def where
   typeOf def  = defType def
