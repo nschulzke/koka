@@ -56,6 +56,8 @@ module Common.Name
           , requalifyLocally, qualifyLocally, unqualifyFull, isLocallyQualified, fullQualifier
           , unqualifyAsModuleName, unqualifyLocally
 
+          , nameMapStem
+
           , showHex, showBinary, showHexFloat
           ) where
 

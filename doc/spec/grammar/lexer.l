@@ -205,6 +205,7 @@ finally                   { return ID_FINALLY; }
 fip                       { return ID_FIP; }
 fbip                      { return ID_FBIP; }
 tail                      { return ID_TAIL; }
+lazy                      { return ID_LAZY; }
 
 import{Space}+extern      { return IMPORT_EXTERN; }
 extern{Space}+import      { return IMPORT_EXTERN; } /* deprecated */

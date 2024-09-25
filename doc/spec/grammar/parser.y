@@ -87,6 +87,7 @@ void printDeclEx( const char* sort, const char* name, bool verbose );
 %token ID_VALUE ID_REFERENCE ID_SCOPED
 %token ID_INITIALLY ID_FINALLY
 %token ID_FIP ID_FBIP ID_TAIL
+%token ID_LAZY
 
 %type <Id>  varid conid qvarid qconid op
 %type <Id>  identifier qidentifier qoperator qconstructor
@@ -273,6 +274,7 @@ typemod     : structmod
             | ID_EXTEND
             | ID_CO
             | ID_DIV
+            | ID_LAZY
             ;
 
 structmod   : ID_VALUE
@@ -672,6 +674,7 @@ varid       : ID
             | ID_FIP          { $$ = "fip"; }
             | ID_FBIP         { $$ = "fbip"; }
             | ID_TAIL         { $$ = "tail"; }
+            | ID_LAZY         { $$ = "lazy"; }
             /* | ID_NAMED        { $$ = "named"; } */
             ;
 

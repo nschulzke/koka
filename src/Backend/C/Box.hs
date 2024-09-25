@@ -76,6 +76,12 @@ boxExpr expectTp expr
       TypeLam tvs e        -> boxExpr expectTp e
       TypeApp e tps        -> boxExpr expectTp e
 
+      -- special internals
+      App (TypeApp fun@(Var name _) targs) args | nameStem (getName name) `elem` ["lazy-update","lazy-indirect"]
+        -> do bargs <- mapM (\arg -> boxExpr (boxTypeOf arg) arg) args
+              return (App fun bargs)
+
+
       -- Regular
       App e args           -> do let argTps = map boxTypeOf args
                                      eTp    = TFun [(nameNil,tp) | tp <- argTps] typeTotal expectTp

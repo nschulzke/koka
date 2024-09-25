@@ -93,6 +93,9 @@ parcTopLevelExpr ds@(DefFun bs _) expr
         -> TypeLam tpars <$> parcTopLevelExpr ds body
       Lam pars eff body
         -> do let parsBs = zip pars $ bs ++ repeat Own
+              -- lazy argument for whnf is not refcounted
+              -- and in the match we pretend is uniquely owned so we don't dup its children (`isLazyBorrow`)
+              mapM_ (\(par,own) -> when ( "lazy-" `L.isPrefixOf` nameStem (getName par)) (setLazyBorrow par)) parsBs
               let parsSet = S.fromList $ map fst $ filter (\x -> snd x == Own) parsBs
               (dups, body') <- parcLam expr parsSet body
               return (maybeStats dups $ Lam pars eff body')
@@ -110,6 +113,7 @@ parcExpr expr
         -> do let parsSet = S.fromList pars
               (dups, body') <- parcLam expr parsSet body
               return (maybeStats dups $ Lam pars eff body')
+
       Var tname info | infoIsRefCounted info
         -> do -- parcTrace ("refcounted: " ++ show tname ++ ": " ++ show info)
               fromMaybe expr <$> useTName tname
@@ -139,10 +143,12 @@ parcExpr expr
       -- On the other hand, we want to avoid an infinite recursion with
       -- the wrapping if it is not ref-counted.
       App inner@(Var tname info) args
-        -> do inner' <- if infoIsRefCounted info then parcExpr inner else return inner
+        -> do -- parcTrace ("app: " ++ show tname)
+              inner' <- if infoIsRefCounted info then parcExpr inner else return inner
               parcBorrowApp tname args inner'
       App inner@(TypeApp (Var tname info) targs) args
-        -> do inner' <- if infoIsRefCounted info then parcExpr inner else return inner
+        -> do -- parcTrace ("app typeds: " ++ show tname)
+              inner' <- if infoIsRefCounted info then parcExpr inner else return inner
               parcBorrowApp tname args inner'
       App fn args
         -> do args' <- reverseMapM parcExpr args
@@ -195,10 +201,10 @@ parcBorrowApp tname args expr
                   (lets, drops, args') <- unzip3 <$> reverseMapM (uncurry parcBorrowArg) argsBs
                   -- parcTrace $ "On function " ++ show (getName tname) ++ " with args " ++ show args ++ " we have: " ++ show (lets, drops, args')
                   expr' <- case catMaybes drops of
-                             [] -> return $ App expr args'
-                             _  -> do appName <- uniqueName "brw"
-                                      let def = makeDef appName $ App expr args'
-                                      return $ makeLet [DefNonRec def] $ maybeStats drops $ Var (defTName def) InfoNone
+                            [] -> return $ App expr args'
+                            _  -> do appName <- uniqueName "brw"
+                                     let def = makeDef appName $ App expr args'
+                                     return $ makeLet [DefNonRec def] $ maybeStats drops $ Var (defTName def) InfoNone
                   return $ makeLet (concat lets) expr'
 
 -- | Let-float borrowed arguments to the top so that we can drop them after the function call
@@ -344,13 +350,18 @@ specializeDrop mchildrenOf conNameOf dups v    -- dups are descendents of v
         let tp = typeOf v
         isValue <- isJust <$> getValueForm tp
         isDataAsMaybe <- getIsDataAsMaybe tp
+        isLazy <- isLazyBorrow v
         let hasKnownChildren = isJust (mchildrenOf v)
             dontSpecialize   = not hasKnownChildren ||   -- or otherwise xUnique is wrong!
                                isValue || isBoxType tp || isFun tp || isTypeInt tp || isDataAsMaybe
 
             noSpecialize y   = do xDrop <- genDrop y
                                   return $ xShared ++ [xDrop]
-        if isValue && all (\child -> S.member child dups) (S.toList (childrenOf v))
+        if isLazy
+          then do -- consider it unique, but don't drop it
+                  -- parcTrace ("lazy opt: " ++ show v)
+                  return xUnique
+        else if isValue && all (\child -> S.member child dups) (S.toList (childrenOf v))
             -- Try to optimize a dropped value type where all fields are dup'd and where
             -- the fields are not boxed in a special way (all BoxIdentity).
             -- this optimization is important for TRMC for the `ctail` value type.
@@ -548,9 +559,11 @@ useTName :: TName -> Parc (Maybe Expr)
 useTName tname
   = do live <- isLive tname
        borrowed <- isBorrowed tname
-       markLive tname
-       -- parcTrace ("marked live: " ++ show tname)
-       if live || borrowed
+       lazy <- isLazyBorrow tname    -- don't refcount lazy value in whnf routine
+       when (not lazy) $
+          do -- parcTrace ("marked live: " ++ show tname)
+             markLive tname
+       if (live || borrowed) -- && not lazy
          then -- trace ("use dup " ++ show tname) $
               genDup tname
          else -- trace ("use nodup " ++ show tname) $
@@ -780,7 +793,8 @@ data Env = Env { currentDef :: [Def],
 
 type Live = TNames
 data ParcState = ParcState { uniq :: Int,
-                             live :: Live
+                             live :: Live,
+                             lazyBorrow :: Maybe TName
                            }
 
 type ParcM a = ReaderT Env (State ParcState) a
@@ -807,7 +821,7 @@ runParc :: Pretty.Env -> Platform -> Newtypes -> Borrowed -> Bool -> Parc a -> U
 runParc penv platform newtypes borrowed enableSpecialize (Parc action)
   = withUnique $ \u ->
       let env = Env [] penv platform newtypes enableSpecialize S.empty M.empty borrowed
-          st = ParcState u S.empty
+          st = ParcState u S.empty Nothing
           (val, st') = runState (runReaderT action env) st
        in (val, uniq st')
 
@@ -828,6 +842,19 @@ getPrettyEnv = prettyEnv <$> getEnv
 withPrettyEnv :: (Pretty.Env -> Pretty.Env) -> Parc a -> Parc a
 withPrettyEnv f = withEnv (\e -> e { prettyEnv = f (prettyEnv e) })
 
+--
+
+setLazyBorrow :: TName -> Parc ()
+setLazyBorrow name
+  = do parcTrace ("set lazy: " ++ show name)
+       updateSt (\st -> st{ lazyBorrow = Just name })
+
+isLazyBorrow :: TName -> Parc Bool
+isLazyBorrow name
+  = do st <- getSt
+       case lazyBorrow st of
+         Just lname -> return (lname == name)
+         Nothing    -> return False
 --
 
 allowSpecialize :: Parc Bool

@@ -32,6 +32,13 @@ fun list( xs : llist<a> ) : div list<a>
     LCons(x,xx) -> Cons(x, xx.list)
     _    -> Nil  // should not be needed
 
+fun map( xs : llist<a>, f : a -> <div|e> b ) : <div|e> llist<b>
+  match llist-force(xs)
+    LNil -> LNil
+    LCons(x,xx) -> LCons(f(x), xx.map(f))
+    _    -> LNil  // should not be needed
+
+
 fun test1()
-  LApp(llist(3),llist(3)).list.show
+  LApp(llist(3),llist(3)).map(inc).list.show
 

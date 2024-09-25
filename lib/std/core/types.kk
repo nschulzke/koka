@@ -448,13 +448,13 @@ pub value type @optional<a>
 
 
 // Force lazy constructors
-pub inline extern force( x : a, eval : a -> e a ) : e a
+pub inline fip(1) extern force( x : a, eval : a -> <div|e> a ) : <div|e> a
   c "kk_lazy_force"
 
-pub inline extern is-lazy( ^x : a ) : bool
+pub inline fip extern is-lazy( ^x : a ) : bool
   c "kk_is_lazy"
 
-pub inline extern lazy-eval( x : a, eval : a -> e a ) : a
+pub inline fip extern lazy-eval( x : a, eval : a -> <div|e> a ) : <div|e> a
   c "kk_lazy_eval"
 
 
