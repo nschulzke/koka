@@ -11,7 +11,7 @@
 -- constructor reuse analysis
 -----------------------------------------------------------------------------
 
-module Backend.C.ParcReuseSpec( parcReuseSpecialize ) where
+module Backend.C.ParcReuseSpec where
 
 import Lib.Trace (trace)
 import Control.Monad
@@ -22,7 +22,7 @@ import Type.Type
 import qualified Type.Pretty as Pretty
 
 import Lib.PPrint
-import Common.NamePrim( nameConFieldsAssign, nameAllocAt, nameReuseIsValid, nameDup, nameSetTag, nameConTagFieldsAssign )
+import Common.NamePrim( nameConFieldsAssign, nameAllocAt, nameReuseIsValid, nameDup, nameSetTag, nameConTagFieldsAssign, nameConTagScanFieldsAssign )
 import Common.Failure
 import Common.Unique
 import Common.Syntax
@@ -116,7 +116,7 @@ ruGuard (Guard test expr)
 --------------------------------------------------------------------------
 
 -- | Try to specialize an allocation at a reuse.
--- We will only do this if we can get the necessary ConInfo 
+-- We will only do this if we can get the necessary ConInfo
 -- and save at least a fourth of the necessary assignments.
 ruSpecialize :: TName -> VarInfo -> Expr -> Reuse (Maybe Expr)
 ruSpecialize reuseName info conApp
@@ -197,8 +197,21 @@ genReuseIsValid reuseName
   where
     typeReuseIsValid = TFun [(nameNil,typeReuse)] typeTotal typeBool
 
+
 -- genConFieldsAssign tp conName reuseName [(field1,expr1)...(fieldN,exprN)]
--- generates:  c = (conName*)reuseName; c->field1 := expr1; ... ; c->fieldN := exprN; (tp*)(c)
+-- generates:  c = (conName*)reuseName; c->scan_fsize = scan; c->tag = tag; c->field1 := expr1; ... ; c->fieldN := exprN; (tp*)(c)
+genConTagScanFieldsAssign :: Type -> TName -> ConRepr -> TName -> Int -> Int -> [(Name,Expr)] -> Expr
+genConTagScanFieldsAssign resultType conName conRepr reuseName tag scan fieldExprs
+  = App (Var (TName nameConTagScanFieldsAssign typeConFieldsAssign) (InfoArity 0 (length fieldExprs + 1)))
+        ([Var reuseName (InfoConField conName conRepr nameNil),
+          Var (TName (newName (show tag)) typeUnit) InfoNone,
+          Var (TName (newName (show scan)) typeUnit) InfoNone] ++ map snd fieldExprs)
+  where
+    fieldTypes = [(name,typeOf expr) | (name,expr) <- fieldExprs]
+    typeConFieldsAssign = TFun ([(nameNil,typeOf reuseName), (nameNil, typeUnit)] ++ fieldTypes) typeTotal resultType
+
+-- genConFieldsAssign tp conName reuseName [(field1,expr1)...(fieldN,exprN)]
+-- generates:  c = (conName*)reuseName; c->tag = tag; c->field1 := expr1; ... ; c->fieldN := exprN; (tp*)(c)
 genConTagFieldsAssign :: Type -> TName -> ConRepr -> TName -> Int -> [(Name,Expr)] -> Expr
 genConTagFieldsAssign resultType conName conRepr reuseName tag fieldExprs
   = App (Var (TName nameConTagFieldsAssign typeConFieldsAssign) (InfoArity 0 (length fieldExprs + 1)))

@@ -75,7 +75,8 @@ module Common.NamePrim
           , nameKeepMatch, nameDropMatch, nameReuseMatch
           , nameTpReuse, nameDropReuse, nameFreeReuse
           , nameReuseNull, nameAssignReuse, nameReuse, nameReuseIsValid
-          , nameAllocAt, nameConFieldsAssign, nameConTagFieldsAssign, nameReuseDrop
+          , nameAllocAt, nameConFieldsAssign, nameConTagFieldsAssign, nameConTagScanFieldsAssign
+          , nameReuseDrop
           , nameDropSpecial, nameKeep, nameSetTag
 
           -- * TRMC optimization, constructor contexts
@@ -464,6 +465,7 @@ nameReuse       = coreTypesName "@reuse"
 nameReuseIsValid= coreTypesName "@reuse-is-valid"
 nameConFieldsAssign = coreTypesName "@con-fields-assign"
 nameConTagFieldsAssign = coreTypesName "@con-tag-fields-assign"
+nameConTagScanFieldsAssign = coreTypesName "@con-tag-scan-fields-assign"
 nameSetTag      = coreTypesName "@set-tag"
 nameKeep        = coreTypesName "keep"
 

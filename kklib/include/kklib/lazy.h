@@ -67,17 +67,4 @@ static inline kk_box_t kk_lazy_force(kk_box_t d, kk_function_t eval, kk_context_
 }
 
 
-static inline kk_datatype_t kk_lazy_indirect(kk_datatype_t target, kk_datatype_t val, kk_context_t* ctx) {
-  kk_block_t* b = kk_datatype_as_ptr(target,ctx);
-  if kk_likely(kk_block_is_unique(b)) {
-    kk_block_free(b,ctx);
-    return val;
-  }
-  else {
-    kk_header_init(&b->header,1 /* scan */, 1 /* cpath */, KK_TAG_LAZY_IND);
-    kk_block_field_set(b,0,kk_datatype_box(val));
-    return target;
-  }
-}
-
 #endif // KK_LAZY_H

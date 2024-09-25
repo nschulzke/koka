@@ -115,6 +115,11 @@ chkExpr expr
               out <- extractOutput $ chkExpr body
               writeOutput =<< foldM (\out nm -> bindName nm Nothing out) out pars
 
+      App (TypeApp (Var tname _) _) _ | getName tname == nameCCtxSetCtxPath
+                                     || nameStem (getName tname) == "lazy-whnf-target"
+                                     || nameStem (getName tname) == "whitehole"
+                                     || nameStem (getName tname) == "blackhole"
+        -> return ()
       App (TypeApp (Var tname _) _) _ | getName tname `elem` [nameCCtxSetCtxPath] -> return ()
 
       App fn args -> chkApp fn args

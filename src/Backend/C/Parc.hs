@@ -93,9 +93,6 @@ parcTopLevelExpr ds@(DefFun bs _) expr
         -> TypeLam tpars <$> parcTopLevelExpr ds body
       Lam pars eff body
         -> do let parsBs = zip pars $ bs ++ repeat Own
-              -- lazy argument for whnf is not refcounted
-              -- and in the match we pretend is uniquely owned so we don't dup its children (`isLazyBorrow`)
-              mapM_ (\(par,own) -> when ( "lazy-" `L.isPrefixOf` nameStem (getName par)) (setLazyBorrow par)) parsBs
               let parsSet = S.fromList $ map fst $ filter (\x -> snd x == Own) parsBs
               (dups, body') <- parcLam expr parsSet body
               return (maybeStats dups $ Lam pars eff body')
@@ -105,6 +102,14 @@ parcTopLevelExpr _ expr = parcExpr expr
 parcExpr :: Expr -> Parc Expr
 parcExpr expr
   = case expr of
+      App (Var name _) _ | nameStem (getName name) == "lazy-whnf-target"
+                        || nameStem (getName name) == "whitehole"
+                        || nameStem (getName name) == "blackhole"
+        -> do return expr
+      App (Var name varInfo) [var, conApp] | nameStem (getName name) == "lazy-update"
+        -> do conApp' <- parcExpr conApp
+              return $ App (Var name varInfo) [var, conApp']
+
       TypeLam tpars body
         -> TypeLam tpars <$> parcExpr body
       TypeApp body targs
@@ -113,7 +118,6 @@ parcExpr expr
         -> do let parsSet = S.fromList pars
               (dups, body') <- parcLam expr parsSet body
               return (maybeStats dups $ Lam pars eff body')
-
       Var tname info | infoIsRefCounted info
         -> do -- parcTrace ("refcounted: " ++ show tname ++ ": " ++ show info)
               fromMaybe expr <$> useTName tname
@@ -143,12 +147,10 @@ parcExpr expr
       -- On the other hand, we want to avoid an infinite recursion with
       -- the wrapping if it is not ref-counted.
       App inner@(Var tname info) args
-        -> do -- parcTrace ("app: " ++ show tname)
-              inner' <- if infoIsRefCounted info then parcExpr inner else return inner
+        -> do inner' <- if infoIsRefCounted info then parcExpr inner else return inner
               parcBorrowApp tname args inner'
       App inner@(TypeApp (Var tname info) targs) args
-        -> do -- parcTrace ("app typeds: " ++ show tname)
-              inner' <- if infoIsRefCounted info then parcExpr inner else return inner
+        -> do inner' <- if infoIsRefCounted info then parcExpr inner else return inner
               parcBorrowApp tname args inner'
       App fn args
         -> do args' <- reverseMapM parcExpr args
@@ -201,10 +203,10 @@ parcBorrowApp tname args expr
                   (lets, drops, args') <- unzip3 <$> reverseMapM (uncurry parcBorrowArg) argsBs
                   -- parcTrace $ "On function " ++ show (getName tname) ++ " with args " ++ show args ++ " we have: " ++ show (lets, drops, args')
                   expr' <- case catMaybes drops of
-                            [] -> return $ App expr args'
-                            _  -> do appName <- uniqueName "brw"
-                                     let def = makeDef appName $ App expr args'
-                                     return $ makeLet [DefNonRec def] $ maybeStats drops $ Var (defTName def) InfoNone
+                             [] -> return $ App expr args'
+                             _  -> do appName <- uniqueName "brw"
+                                      let def = makeDef appName $ App expr args'
+                                      return $ makeLet [DefNonRec def] $ maybeStats drops $ Var (defTName def) InfoNone
                   return $ makeLet (concat lets) expr'
 
 -- | Let-float borrowed arguments to the top so that we can drop them after the function call
@@ -221,17 +223,15 @@ parcBorrowArg expr parInfo
                 let def = makeDef argName expr'
                 return ([DefNonRec def], Nothing, Var (defTName def) InfoNone)
       (Var tname info, Borrow)
-        -> do -- parcTrace ("borrow var arg: " ++ show tname)
-              if infoIsRefCounted info
-                then (\d -> ([], d, expr)) <$> useTNameBorrowed tname
-                else return ([], Nothing, expr)
+        -> if infoIsRefCounted info
+            then (\d -> ([], d, expr)) <$> useTNameBorrowed tname
+            else return ([], Nothing, expr)
       (_, Borrow)
         -> do expr' <- parcExpr expr
               notRefCounted <- exprIsNotRefcounted expr   -- for example, small integer literals
               if (notRefCounted)
                 then return ([], Nothing, expr')
-                else do -- parcTraceDoc $ \penv -> text "borrow:" <+> prettyExpr penv expr
-                        argName <- uniqueName "brw"
+                else do argName <- uniqueName "brw"
                         let def = makeDef argName expr'
                         drop <- extendOwned (S.singleton (defTName def)) $ genDrop (defTName def)
                         return ([DefNonRec def], drop, Var (defTName def) InfoNone)
@@ -350,18 +350,13 @@ specializeDrop mchildrenOf conNameOf dups v    -- dups are descendents of v
         let tp = typeOf v
         isValue <- isJust <$> getValueForm tp
         isDataAsMaybe <- getIsDataAsMaybe tp
-        isLazy <- isLazyBorrow v
         let hasKnownChildren = isJust (mchildrenOf v)
             dontSpecialize   = not hasKnownChildren ||   -- or otherwise xUnique is wrong!
                                isValue || isBoxType tp || isFun tp || isTypeInt tp || isDataAsMaybe
 
             noSpecialize y   = do xDrop <- genDrop y
                                   return $ xShared ++ [xDrop]
-        if isLazy
-          then do -- consider it unique, but don't drop it
-                  -- parcTrace ("lazy opt: " ++ show v)
-                  return xUnique
-        else if isValue && all (\child -> S.member child dups) (S.toList (childrenOf v))
+        if isValue && all (\child -> S.member child dups) (S.toList (childrenOf v))
             -- Try to optimize a dropped value type where all fields are dup'd and where
             -- the fields are not boxed in a special way (all BoxIdentity).
             -- this optimization is important for TRMC for the `ctail` value type.
@@ -392,7 +387,7 @@ specializeDrop mchildrenOf conNameOf dups v    -- dups are descendents of v
             -- don't specialize certain primitives
             then do -- parcTrace $ "no specialize: " ++ show v
                     noSpecialize v
-            else do -- parcTrace $ "specialize: " ++ show y
+            else do -- parcTrace $ "specialize: " ++ show v
                     xDecRef <- genDecRef v
                     let maybeStatsUnit :: [Maybe Expr] -> Expr
                         maybeStatsUnit xs
@@ -559,11 +554,9 @@ useTName :: TName -> Parc (Maybe Expr)
 useTName tname
   = do live <- isLive tname
        borrowed <- isBorrowed tname
-       lazy <- isLazyBorrow tname    -- don't refcount lazy value in whnf routine
-       when (not lazy) $
-          do -- parcTrace ("marked live: " ++ show tname)
-             markLive tname
-       if (live || borrowed) -- && not lazy
+       markLive tname
+       -- parcTrace ("marked live: " ++ show tname)
+       if live || borrowed
          then -- trace ("use dup " ++ show tname) $
               genDup tname
          else -- trace ("use nodup " ++ show tname) $
@@ -722,7 +715,7 @@ genDrop name = do shape <- getShapeInfo name
 -- get the dup/drop function
 dupDropFun :: Bool -> Type -> Maybe (ConRepr,Name) -> Maybe Int -> Expr -> Expr
 dupDropFun False {-drop-} tp (Just (conRepr,_)) (Just scanFields) arg
-   | scanFields > 0 && not (conReprIsValue conRepr) && not (isConAsJust conRepr) && not (isBoxType tp) -- drop with known number of scan fields
+   | not (conReprIsValue conRepr) && not (isConAsJust conRepr) && not (isBoxType tp) -- drop with known number of scan fields
   = App (Var (TName name coerceTp) (InfoExternal [(C CDefault, "dropn(#1,#2)")])) [arg,makeInt32 (toInteger scanFields)]
   where
     name = nameDrop
@@ -738,14 +731,6 @@ dupDropFun isDup tp mbConRepr mbScanCount arg
 exprIsNotRefcounted :: Expr -> Parc Bool
 exprIsNotRefcounted expr
   = case expr of
-      -- TypeApp body targs
-      --  -> exprIsNotRefcounted body
-      -- TypeLam tpar body
-      --  -> exprIsNotRefcounted body
-      -- Lam{}
-      --  -> return (tnamesIsEmpty (freeLocals expr))  -- will become a static function (only if not using a compressed heap!)
-      -- Var v info                             -- static function etc.
-      --  -> return (not (infoIsRefCounted info))
       Lit (LitInt i)
         -> return (i >= -8191 && i <= 8191)  -- 14 bits is safe on every platform
       _ -> not <$> needsDupDrop (typeOf expr)
@@ -793,8 +778,7 @@ data Env = Env { currentDef :: [Def],
 
 type Live = TNames
 data ParcState = ParcState { uniq :: Int,
-                             live :: Live,
-                             lazyBorrow :: Maybe TName
+                             live :: Live
                            }
 
 type ParcM a = ReaderT Env (State ParcState) a
@@ -821,7 +805,7 @@ runParc :: Pretty.Env -> Platform -> Newtypes -> Borrowed -> Bool -> Parc a -> U
 runParc penv platform newtypes borrowed enableSpecialize (Parc action)
   = withUnique $ \u ->
       let env = Env [] penv platform newtypes enableSpecialize S.empty M.empty borrowed
-          st = ParcState u S.empty Nothing
+          st = ParcState u S.empty
           (val, st') = runState (runReaderT action env) st
        in (val, uniq st')
 
@@ -842,19 +826,6 @@ getPrettyEnv = prettyEnv <$> getEnv
 withPrettyEnv :: (Pretty.Env -> Pretty.Env) -> Parc a -> Parc a
 withPrettyEnv f = withEnv (\e -> e { prettyEnv = f (prettyEnv e) })
 
---
-
-setLazyBorrow :: TName -> Parc ()
-setLazyBorrow name
-  = do parcTrace ("set lazy: " ++ show name)
-       updateSt (\st -> st{ lazyBorrow = Just name })
-
-isLazyBorrow :: TName -> Parc Bool
-isLazyBorrow name
-  = do st <- getSt
-       case lazyBorrow st of
-         Just lname -> return (lname == name)
-         Nothing    -> return False
 --
 
 allowSpecialize :: Parc Bool
