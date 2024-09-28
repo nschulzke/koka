@@ -126,7 +126,7 @@ export class KokaConfig {
   }
 
   selectTarget(t: string) {
-    if (!["c", "c32", "c64c", "jsnode", "wasm"].includes(t)) {
+    if (!['c', 'c32', 'c64c', 'jsnode', 'jsweb', 'wasmjs', 'wasmweb'].includes(t)) {
       return
     }
     this.target = t

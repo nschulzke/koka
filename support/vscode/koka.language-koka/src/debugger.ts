@@ -180,26 +180,8 @@ class KokaRuntime extends EventEmitter {
 
 	public async start(args: LaunchRequestArguments) {
 		const target = this.config.target
-		let compilerTarget
-		switch (target) {
-			case 'C':
-				compilerTarget = 'c'
-				break
-			case 'JS':
-				compilerTarget = 'js'
-				break
-			case 'WASM':
-				compilerTarget = 'wasm'
-				break
-			case 'C#':
-				compilerTarget = 'cs'
-				break
-			default:
-				compilerTarget = 'c'
-				break
-		}
 		// Args that are parsed by the compiler are in the args field. This leaves the rest of the object open for
-		let additionalArgs = "--buildtag=vscode --target=" + compilerTarget
+		let additionalArgs = "--buildtag=vscode --target=" + target
 		if (args.compilerArgs) {
 			additionalArgs = additionalArgs + " " + args.compilerArgs
 		}
@@ -221,9 +203,21 @@ class KokaRuntime extends EventEmitter {
 				this.emit('end', -1)
 				return;
 			}
-			if (target == 'c') {
+			if (target == 'c' || target == 'c32' || target == 'c64c') {
 				console.log(`Executing ${resp} ${args.programArgs ?? []}`)
 				this.ps = child_process.spawn(resp, args.programArgs ?? [], { cwd: this.config.cwd, env: process.env })
+				this.ps.stdout?.on('data', (data) => {
+					this.emit('output', data.toString(), 'stdout')
+				})
+				this.ps.stderr?.on('data', (data) => {
+					this.emit('output', data.toString(), 'stderr')
+				})
+				this.ps.on('close', (code) => {
+					this.emit('end', code)
+					this.ps = null
+				})
+			}  else if (target == 'jsnode') {
+				this.ps = child_process.spawn('node', [resp, ...(args.programArgs ?? [])], { cwd: this.config.cwd, env: process.env })
 				this.ps.stdout?.on('data', (data) => {
 					this.emit('output', data.toString(), 'stdout')
 				})
@@ -238,31 +232,6 @@ class KokaRuntime extends EventEmitter {
 				this.emit('output', `Running code for target ${target} is not yet supported. Output is at ${resp}`)
 				this.emit('end', -1)
 			}
-			// else if (target == 'JS' || target == 'WASM') {
-			// 	const realTarget = target == 'JS' ? 'jsweb' : 'wasmweb'
-			// 	// TODO: Better configuration for wasm / js build outputs
-			// 	const webBuildDir = path.join(this.config.cwd, 'web', 'build')
-			// 	console.log(`Executing ${this.config.command} --target=${realTarget} ${file} -i${this.config.cwd} --outputdir=${webBuildDir}`)
-			// 	this.ps = child_process.exec(`${this.config.command} --target=${realTarget} ${file} -i${this.config.cwd} --outputdir=${webBuildDir}`, (exitCode, stdout, stderr) => {
-			// 		// TODO: separate output streams for compile versus running?
-			// 		if (stdout) {
-			// 			this.emit('output', stdout, 'stdout')
-			// 		}
-			// 		if (stderr) {
-			// 			this.emit('output', stderr, 'stderr')
-			// 		}
-			// 		if (exitCode) {
-			// 			this.emit('output', `Compiler exited with error status ${exitCode}`, 'stderr')
-			// 			this.emit('end')
-			// 		} else {
-			// 			this.emit('output', `Compiler exited succesfully`, 'stdout')
-			// 			this.emit('end')
-			// 		}
-			// 	})
-			// } else {
-			// 	// TODO: Support C#
-			// 	this.emit('end')
-			// }
 
 		} catch (e) {
 			this.emit('output', `Error generating code: ${e}`, 'stderr')

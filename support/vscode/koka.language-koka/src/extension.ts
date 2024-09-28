@@ -237,7 +237,7 @@ function createCommands(
     }),
 
     vscode.commands.registerCommand('koka.selectTarget', async () => {
-      const result = await vscode.window.showQuickPick(['c', 'c32', 'c64c', 'jsnode', 'wasm'])
+      const result = await vscode.window.showQuickPick(['c', 'c32', 'c64c', 'jsnode', 'jsweb', 'wasmjs', 'wasmweb'])
       if (result) {
         kokaConfig.selectTarget(result)
       }
