@@ -58,3 +58,13 @@ pub fun show( b : bool ) : string
 // Convert a boolean to an `:int`
 pub fip fun int( b : bool ) : int
   if b then 1 else 0
+
+// Transform a bool to a maybe type, using `Nothing` for False
+pub fun maybe( b : bool ) : maybe<()>
+  if b then Just(()) else Nothing
+
+// Convert a `:maybe` unit to a string using False for `Nothing`
+pub fun maybe/bool( mu : maybe<()> ) : bool
+  match mu
+    Nothing -> False
+    Just(()) -> True
